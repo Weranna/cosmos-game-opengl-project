@@ -10,33 +10,34 @@
 #include "Texture.h"
 
 #include "Box.cpp"
-
 #include <assimp/Importer.hpp>
 #include <assimp/scene.h>
 #include <assimp/postprocess.h>
 #include <string>
-#include "SOIL/SOIL.h"
-
-namespace texture {
-	
-}
 
 
-GLuint program;
+GLuint programDefault;
 
 Core::Shader_Loader shaderLoader;
 
 Core::RenderContext shipContext;
 Core::RenderContext sphereContext;
-Core::RenderContext cubeContext;
+
 glm::vec3 cameraPos = glm::vec3(-4.f, 0, 0);
 glm::vec3 cameraDir = glm::vec3(1.f, 0.f, 0.f);
 
 glm::vec3 spaceshipPos = glm::vec3(-4.f, 0, 0);
 glm::vec3 spaceshipDir = glm::vec3(1.f, 0.f, 0.f);
+
 GLuint VAO, VBO;
 
 float aspectRatio = 1.f;
+
+float exposition = 1.f;
+
+glm::vec3 lightPos = glm::vec3(0, 0.f, 0);
+glm::vec3 lightColor = glm::vec3(0.9, 0.7, 0.8) * 100;
+
 
 float lastTime = -1.f;
 float deltaTime = 0.f;
@@ -51,7 +52,6 @@ void updateDeltaTime(float time) {
 	if (deltaTime > 0.1) deltaTime = 0.1;
 	lastTime = time;
 }
-
 glm::mat4 createCameraMatrix()
 {
 	glm::vec3 cameraSide = glm::normalize(glm::cross(cameraDir, glm::vec3(0.f, 1.f, 0.f)));
@@ -89,7 +89,17 @@ glm::mat4 createPerspectiveMatrix()
 	return perspectiveMatrix;
 }
 
+void drawObjectColor(Core::RenderContext& context, glm::mat4 modelMatrix, glm::vec3 color) {
 
+	glm::mat4 viewProjectionMatrix = createPerspectiveMatrix() * createCameraMatrix();
+	glm::mat4 transformation = viewProjectionMatrix * modelMatrix;
+	glUniformMatrix4fv(glGetUniformLocation(programDefault, "transformation"), 1, GL_FALSE, (float*)&transformation);
+
+	glUniform3f(glGetUniformLocation(programDefault, "color"), color.x, color.y, color.z);
+
+	Core::DrawContext(context);
+
+}
 
 void renderScene(GLFWwindow* window)
 {
@@ -99,6 +109,21 @@ void renderScene(GLFWwindow* window)
 	float time = glfwGetTime();
 	updateDeltaTime(time);
 
+
+	glUseProgram(programDefault);
+	drawObjectColor(sphereContext, glm::translate(glm::vec3(0, 0, 0)), glm::vec3(0.9, 0.8, 0.4));
+
+
+	glm::vec3 spaceshipSide = glm::normalize(glm::cross(spaceshipDir, glm::vec3(0.f, 1.f, 0.f)));
+	glm::vec3 spaceshipUp = glm::normalize(glm::cross(spaceshipSide, spaceshipDir));
+	glm::mat4 specshipCameraRotrationMatrix = glm::mat4({
+		spaceshipSide.x,spaceshipSide.y,spaceshipSide.z,0,
+		spaceshipUp.x,spaceshipUp.y,spaceshipUp.z ,0,
+		-spaceshipDir.x,-spaceshipDir.y,-spaceshipDir.z,0,
+		0.,0.,0.,1.,
+		});
+
+	drawObjectColor(shipContext, glm::translate(spaceshipPos) * specshipCameraRotrationMatrix * glm::eulerAngleY(glm::pi<float>()) * glm::scale(glm::vec3(0.0008)), glm::vec3(0.8, 0.8, 0.8));
 
 	glUseProgram(0);
 	glfwSwapBuffers(window);
@@ -121,17 +146,21 @@ void loadModelToContext(std::string path, Core::RenderContext& context)
 	context.initFromAssimpMesh(scene->mMeshes[0]);
 }
 
-
 void init(GLFWwindow* window)
 {
-	glEnable(GL_DEPTH_TEST);
-	program = shaderLoader.CreateProgram("shaders/shader_default.vert", "shaders/shader_default.frag");
+	glfwSetFramebufferSizeCallback(window, framebuffer_size_callback);
 
+	glEnable(GL_DEPTH_TEST);
+
+	programDefault = shaderLoader.CreateProgram("shaders/shader_default.vert", "shaders/shader_default.frag");
+
+	loadModelToContext("./models/sphere.obj", sphereContext);
+	loadModelToContext("./models/spaceship.fbx", shipContext);
 }
 
 void shutdown(GLFWwindow* window)
 {
-	shaderLoader.DeleteProgram(program);
+	shaderLoader.DeleteProgram(programDefault);
 }
 
 //obsluga wejscia
@@ -164,10 +193,14 @@ void processInput(GLFWwindow* window)
 	cameraPos = spaceshipPos - 1.5 * spaceshipDir + glm::vec3(0, 1, 0) * 0.5f;
 	cameraDir = spaceshipDir;
 
+	if (glfwGetKey(window, GLFW_KEY_1) == GLFW_PRESS)
+		exposition -= 0.05;
+	if (glfwGetKey(window, GLFW_KEY_2) == GLFW_PRESS)
+		exposition += 0.05;
+
 	//cameraDir = glm::normalize(-cameraPos);
 
 }
-
 
 // funkcja jest glowna petla
 void renderLoop(GLFWwindow* window) {

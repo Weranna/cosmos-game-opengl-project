@@ -36,6 +36,10 @@
     <ClInclude Include="src\SOIL\stb_image_aug.h" />
     <ClInclude Include="src\Texture.h" />
   </ItemGroup>
+  <ItemGroup>
+    <None Include="shaders\shader_default.frag" />
+    <None Include="shaders\shader_default.vert" />
+  </ItemGroup>
   <PropertyGroup Label="Globals">
     <ProjectGuid>{F2FC2E8F-CBA6-49D7-8B73-4BFBCB64D310}</ProjectGuid>
     <Keyword>Win32Proj</Keyword>
