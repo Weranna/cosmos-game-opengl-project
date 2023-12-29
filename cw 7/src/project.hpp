@@ -125,7 +125,7 @@ void loadModelToContext(std::string path, Core::RenderContext& context)
 void init(GLFWwindow* window)
 {
 	glEnable(GL_DEPTH_TEST);
-	program = shaderLoader.CreateProgram("shaders/shader_5_1.vert", "shaders/shader_5_1.frag");
+	program = shaderLoader.CreateProgram("shaders/shader_default.vert", "shaders/shader_default.frag");
 
 }
 
