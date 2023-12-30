@@ -23,11 +23,11 @@ Core::Shader_Loader shaderLoader;
 Core::RenderContext shipContext;
 Core::RenderContext sphereContext;
 
-glm::vec3 cameraPos = glm::vec3(-4.f, 0, 0);
-glm::vec3 cameraDir = glm::vec3(1.f, 0.f, 0.f);
+glm::vec3 cameraPos = glm::vec3(20.f, 0, 0);
+glm::vec3 cameraDir = glm::vec3(-1.f, 0.f, 0.f);
 
-glm::vec3 spaceshipPos = glm::vec3(-4.f, 0, 0);
-glm::vec3 spaceshipDir = glm::vec3(1.f, 0.f, 0.f);
+glm::vec3 spaceshipPos = glm::vec3(20.f, 0, 0);
+glm::vec3 spaceshipDir = glm::vec3(-1.f, 0.f, 0.f);
 
 GLuint VAO, VBO;
 
@@ -94,26 +94,67 @@ void drawObjectColor(Core::RenderContext& context, glm::mat4 modelMatrix, glm::v
 	glm::mat4 viewProjectionMatrix = createPerspectiveMatrix() * createCameraMatrix();
 	glm::mat4 transformation = viewProjectionMatrix * modelMatrix;
 	glUniformMatrix4fv(glGetUniformLocation(programDefault, "transformation"), 1, GL_FALSE, (float*)&transformation);
-
 	glUniform3f(glGetUniformLocation(programDefault, "color"), color.x, color.y, color.z);
-
 	Core::DrawContext(context);
+}
 
+void drawMoon(Core::RenderContext& context, glm::vec3 color, float planetX, float planetZ, float time, float moonOrbitRadius) {
+	float moonOrbitSpeed = 1.5f;
+	float moonX = planetX + moonOrbitRadius * cos(moonOrbitSpeed * time);
+	float moonZ = planetZ + moonOrbitRadius * sin(moonOrbitSpeed * time);
+	glm::mat4 modelMatrix = glm::translate(glm::vec3(moonX, 0, moonZ)) * glm::scale(glm::vec3(0.3, 0.3, 0.3));
+	glm::mat4 viewProjectionMatrix = createPerspectiveMatrix() * createCameraMatrix();
+	glm::mat4 transformation = viewProjectionMatrix * modelMatrix;
+	glUniform3f(glGetUniformLocation(programDefault, "color"), color.x, color.y, color.z);
+	glUniformMatrix4fv(glGetUniformLocation(programDefault, "transformation"), 1, GL_FALSE, (float*)&transformation);
+	Core::DrawContext(context);
+}
+
+void drawPlanetWithMoon(Core::RenderContext& context, glm::vec3 color, float planetOrbitRadius, float planetOrbitSpeed, float time, glm::vec3 scalePlanet, float moonOrbitRadius) {
+	float planetX = planetOrbitRadius * cos(planetOrbitSpeed * time);
+	float planetZ = planetOrbitRadius * sin(planetOrbitSpeed * time);
+	glm::mat4 modelMatrix = glm::translate(glm::vec3(planetX, 0, planetZ)) * glm::scale(scalePlanet);
+	glm::mat4 viewProjectionMatrix = createPerspectiveMatrix() * createCameraMatrix();
+	glm::mat4 transformation = viewProjectionMatrix * modelMatrix;
+	glUniform3f(glGetUniformLocation(programDefault, "color"), color.x, color.y, color.z);
+	glUniformMatrix4fv(glGetUniformLocation(programDefault, "transformation"), 1, GL_FALSE, (float*)&transformation);
+	Core::DrawContext(context);
+	// KSIÊ¯YC
+	drawMoon(context, glm::vec3(0.8, 0.8, 0.8), planetX, planetZ, time, moonOrbitRadius);
 }
 
 void renderScene(GLFWwindow* window)
 {
+	//GRANATOWE T£O
 	glClearColor(0.0f, 0.0f, 0.15f, 1.0f);
 	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 	glm::mat4 transformation;
 	float time = glfwGetTime();
 	updateDeltaTime(time);
-
-
 	glUseProgram(programDefault);
-	drawObjectColor(sphereContext, glm::translate(glm::vec3(0, 0, 0)), glm::vec3(0.9, 0.8, 0.4));
 
+	// S£OÑCE
+	drawObjectColor(sphereContext, glm::scale(glm::vec3(10.f)) * glm::translate(glm::vec3(0, 0, 0)), glm::vec3(0.9, 0.8, 0.4));
 
+	// UK£AD S£ONECZNY - PLANETY Z KSIÊ¯YCEM
+	//MERKURY
+	drawPlanetWithMoon(sphereContext, glm::vec3(0.5f, 0.5f, 0.5f), 15.0f, 0.4f, time, glm::vec3(0.5),1);
+	//WENUS
+	drawPlanetWithMoon(sphereContext, glm::vec3(0.9f, 0.7f, 0.2f), 20.0f, 0.35f, time, glm::vec3(1.f),1.5);
+	//ZIEMIA
+	drawPlanetWithMoon(sphereContext, glm::vec3(0.0f, 1.0f, 0.f), 25.0f, 0.3f, time, glm::vec3(1.3f),2);
+	//MARS
+	drawPlanetWithMoon(sphereContext, glm::vec3(1.0f, 0.0f, 0.f), 30.0f, 0.25f, time, glm::vec3(1.3f), 2);
+	//JOWISZ
+	drawPlanetWithMoon(sphereContext, glm::vec3(0.9f, 0.7f, 0.5f), 40.0f, 0.2f, time, glm::vec3(2.5f), 3);
+	//SATURN - bez pierœcieni (mo¿e dorobiæ póŸniej spróbowaæ?)
+	drawPlanetWithMoon(sphereContext, glm::vec3(0.7f, 0.7f, 0.5f), 50.0f, 0.15f, time, glm::vec3(2.2f), 3);
+	//URAN - tu te¿ teoretycznie pierscienie by mozna dodac
+	drawPlanetWithMoon(sphereContext, glm::vec3(0.0f, 0.0f, 0.6f), 55.0f, 0.1f, time, glm::vec3(1.6f), 2.5);
+	//NEPTUN
+	drawPlanetWithMoon(sphereContext, glm::vec3(0.0f, 0.0f, 0.4f), 60.0f, 0.05f, time, glm::vec3(1.8f), 2.5);
+
+	//STATEK
 	glm::vec3 spaceshipSide = glm::normalize(glm::cross(spaceshipDir, glm::vec3(0.f, 1.f, 0.f)));
 	glm::vec3 spaceshipUp = glm::normalize(glm::cross(spaceshipSide, spaceshipDir));
 	glm::mat4 specshipCameraRotrationMatrix = glm::mat4({
@@ -122,12 +163,12 @@ void renderScene(GLFWwindow* window)
 		-spaceshipDir.x,-spaceshipDir.y,-spaceshipDir.z,0,
 		0.,0.,0.,1.,
 		});
-
-	drawObjectColor(shipContext, glm::translate(spaceshipPos) * specshipCameraRotrationMatrix * glm::eulerAngleY(glm::pi<float>()) * glm::scale(glm::vec3(0.0008)), glm::vec3(0.8, 0.8, 0.8));
+	drawObjectColor(shipContext, glm::translate(spaceshipPos) * specshipCameraRotrationMatrix * glm::eulerAngleY(glm::pi<float>()) * glm::scale(glm::vec3(0.0004)), glm::vec3(0.8, 0.8, 0.8));
 
 	glUseProgram(0);
 	glfwSwapBuffers(window);
 }
+
 void framebuffer_size_callback(GLFWwindow* window, int width, int height)
 {
 	aspectRatio = width / float(height);
@@ -169,7 +210,7 @@ void processInput(GLFWwindow* window)
 	glm::vec3 spaceshipSide = glm::normalize(glm::cross(spaceshipDir, glm::vec3(0.f, 1.f, 0.f)));
 	glm::vec3 spaceshipUp = glm::vec3(0.f, 1.f, 0.f);
 	float angleSpeed = 0.05f * deltaTime * 60;
-	float moveSpeed = 0.05f * deltaTime * 60;
+	float moveSpeed = 0.3f * deltaTime * 60;
 	if (glfwGetKey(window, GLFW_KEY_ESCAPE) == GLFW_PRESS) {
 		glfwSetWindowShouldClose(window, true);
 	}
