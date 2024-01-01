@@ -153,6 +153,10 @@ void renderScene(GLFWwindow* window)
 	drawPlanetWithMoon(sphereContext, glm::vec3(0.0f, 0.0f, 0.6f), 55.0f, 0.1f, time, glm::vec3(1.6f), 2.5);
 	//NEPTUN
 	drawPlanetWithMoon(sphereContext, glm::vec3(0.0f, 0.0f, 0.4f), 60.0f, 0.05f, time, glm::vec3(1.8f), 2.5);
+	
+	//DODATKOWE PLANETY S¥ W TEKSTURACH, W RAZIE CZEGO ZNAJDÊ WIÊCEJ
+	//NIE BÊDE ICH DODAWAÆ, BO I TAK MUSIMY USTALIÆ JAK CHCEMY ¯EBY TO WYGL¥DA£O
+	//TAK SAMO NIE DODAM ASTEROID I ŒMIECI, MODELE I TEKSTURY S¥ W FOLDERACH
 
 	//STATEK
 	glm::vec3 spaceshipSide = glm::normalize(glm::cross(spaceshipDir, glm::vec3(0.f, 1.f, 0.f)));
