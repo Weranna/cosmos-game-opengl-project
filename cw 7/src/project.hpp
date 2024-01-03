@@ -199,7 +199,7 @@ void init(GLFWwindow* window)
 
 	programDefault = shaderLoader.CreateProgram("shaders/shader_default.vert", "shaders/shader_default.frag");
 
-	loadModelToContext("./models/sphere.obj", sphereContext);
+	//loadModelToContext("./models/sphere.obj", sphereContext);
 	loadModelToContext("./models/spaceship.fbx", shipContext);
 }
 
