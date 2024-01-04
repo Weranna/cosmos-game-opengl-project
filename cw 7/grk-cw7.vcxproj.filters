@@ -97,5 +97,11 @@
     <None Include="shaders\shader_default.vert">
       <Filter>Shader Files</Filter>
     </None>
+    <None Include="shaders\shader_sun.frag">
+      <Filter>Shader Files</Filter>
+    </None>
+    <None Include="shaders\shader_sun.vert">
+      <Filter>Shader Files</Filter>
+    </None>
   </ItemGroup>
 </Project>
