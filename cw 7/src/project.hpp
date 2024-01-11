@@ -173,11 +173,11 @@ void drawTrash(float planetX, float planetZ, float time, float orbitRadius, glm:
 		glm::mat4 modelMatrix2 = glm::translate(glm::vec3(trashX2, -0.5f, trashZ2)) *
 			glm::rotate(rotationSpeedY * time, glm::vec3(0.0f, 1.0f, 0.0f)) *
 			glm::rotate(rotationSpeedX * time, glm::vec3(1.0f, 0.0f, 0.0f)) *
-			glm::scale(scalePlanet / 300.0f);
+			glm::scale(scalePlanet/ 2.f);
 
 		// Rysuj obiekty z zastosowanymi macierzami modelu
 		drawObjectTexture(trash1Context, texture::trash1, modelMatrix1);
-		drawObjectTexture(trash2Context, texture::trash1, modelMatrix2);
+		drawObjectTexture(trash2Context, texture::trash2, modelMatrix2);
 	}
 }
 
@@ -321,7 +321,7 @@ void init(GLFWwindow* window)
 	loadModelToContext("./models/sphere.obj", sphereContext);
 	loadModelToContext("./models/spaceship.fbx", shipContext);
 	loadModelToContext("./models/trash1.dae", trash1Context);
-	loadModelToContext("./models/trash2.obj", trash2Context);
+	loadModelToContext("./models/trash2.dae", trash2Context);
 
 	texture::sun[0] = Core::LoadTexture("./textures/sun/sun_albedo.png");
 	texture::sun[1] = Core::LoadTexture("./textures/sun/sun_normal.png");
@@ -386,11 +386,11 @@ void init(GLFWwindow* window)
 	texture::trash1[3] = Core::LoadTexture("./textures/trash/trash1_roughness.jpg");
 	texture::trash1[4] = Core::LoadTexture("./textures/trash/trash1_metallic.jpg");
 
-	texture::trash2[0] = Core::LoadTexture("./textures/trash/trash2_albedo.png");
+	texture::trash2[0] = Core::LoadTexture("./textures/trash/trash2_albedo.jpg");
 	texture::trash2[1] = Core::LoadTexture("./textures/trash/trash2_normal.png");
-	texture::trash2[2] = Core::LoadTexture("./textures/trash/trash1_AO.jpg");
-	texture::trash2[3] = Core::LoadTexture("./textures/trash/trash2_roughness.png");
-	texture::trash2[4] = Core::LoadTexture("./textures/trash/trash2_metallic.png");
+	texture::trash2[2] = Core::LoadTexture("./textures/trash/trash2_AO.jpg");
+	texture::trash2[3] = Core::LoadTexture("./textures/trash/trash2_roughness.jpg");
+	texture::trash2[4] = Core::LoadTexture("./textures/trash/trash2_metallic.jpg");
 }
 
 void shutdown(GLFWwindow* window)
