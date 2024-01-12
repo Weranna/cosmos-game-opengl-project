@@ -31,6 +31,7 @@ namespace texture {
 
 	GLuint trash1[5];
 	GLuint trash2[5];
+	GLuint asteroid[5];
 }
 
 GLuint programDefault;
@@ -42,6 +43,7 @@ Core::RenderContext shipContext;
 Core::RenderContext sphereContext;
 Core::RenderContext trash1Context;
 Core::RenderContext trash2Context;
+Core::RenderContext asteroidContext;
 
 glm::vec3 cameraPos = glm::vec3(20.f, 0, 0);
 glm::vec3 cameraDir = glm::vec3(-1.f, 0.f, 0.f);
@@ -152,11 +154,8 @@ void drawObjectTexture(Core::RenderContext& context, GLuint texture_ID[5], glm::
 
 void drawTrash(float planetX, float planetZ, float time, float orbitRadius, glm::vec3 scalePlanet) {
 	float orbitSpeed = 1.5f;
-	float rotationSpeedY = 2.0f;
-	float rotationSpeedX = 0.5f;
 
 	int numberOfTrash = ceil(scalePlanet.r);
-
 	for (int i = 1; i <= numberOfTrash; ++i) {
 		
 		float trashX1 = planetX + orbitRadius * cos(orbitSpeed * time + i * 100);
@@ -166,16 +165,15 @@ void drawTrash(float planetX, float planetZ, float time, float orbitRadius, glm:
 		float trashZ2 = planetZ + orbitRadius * sin(orbitSpeed * time - i * 100);
 
 		glm::mat4 modelMatrix1 = glm::translate(glm::vec3(trashX1, 0.5f, trashZ1)) *
-			glm::rotate(rotationSpeedY * time, glm::vec3(0.0f, 1.0f, 0.0f)) *
-			glm::rotate(rotationSpeedX * time, glm::vec3(1.0f, 0.0f, 0.0f)) *
+			glm::rotate(2.f * time, glm::vec3(0.0f, 1.0f, 0.0f)) *
+			glm::rotate(0.5f * time, glm::vec3(1.0f, 0.0f, 0.0f)) *
 			glm::scale(scalePlanet / 10.0f);
 
 		glm::mat4 modelMatrix2 = glm::translate(glm::vec3(trashX2, -0.5f, trashZ2)) *
-			glm::rotate(rotationSpeedY * time, glm::vec3(0.0f, 1.0f, 0.0f)) *
-			glm::rotate(rotationSpeedX * time, glm::vec3(1.0f, 0.0f, 0.0f)) *
+			glm::rotate(2.f * time, glm::vec3(0.0f, 1.0f, 0.0f)) *
+			glm::rotate(0.5f * time, glm::vec3(1.0f, 0.0f, 0.0f)) *
 			glm::scale(scalePlanet/ 2.f);
 
-		// Rysuj obiekty z zastosowanymi macierzami modelu
 		drawObjectTexture(trash1Context, texture::trash1, modelMatrix1);
 		drawObjectTexture(trash2Context, texture::trash2, modelMatrix2);
 	}
@@ -183,7 +181,7 @@ void drawTrash(float planetX, float planetZ, float time, float orbitRadius, glm:
 
 
 
-void drawPlanet(Core::RenderContext& context, GLuint texture_ID[5], float planetOrbitRadius, float planetOrbitSpeed, float time, glm::vec3 scalePlanet, float orbitRadius) {
+void drawPlanet(Core::RenderContext& context, GLuint texture_ID[5], float planetOrbitRadius, float planetOrbitSpeed, float time, glm::vec3 scalePlanet, float trashOrbitRadius) {
 	float planetX = planetOrbitRadius * cos(planetOrbitSpeed * time);
 	float planetZ = planetOrbitRadius * sin(planetOrbitSpeed * time);
 	glm::mat4 modelMatrix = glm::translate(glm::vec3(planetX, 0, planetZ)) * glm::scale(scalePlanet);
@@ -207,7 +205,7 @@ void drawPlanet(Core::RenderContext& context, GLuint texture_ID[5], float planet
 	//drawMoon(context, glm::vec3(0.8, 0.8, 0.8), planetX, planetZ, time, moonOrbitRadius);
 
 	// THRASH
-	drawTrash(planetX, planetZ, time, orbitRadius,scalePlanet);
+	drawTrash(planetX, planetZ, time, trashOrbitRadius,scalePlanet);
 }
 
 void drawSun(Core::RenderContext& context, glm::mat4 modelMatrix, GLuint texture1_ID, GLuint texture2_ID) {
@@ -271,10 +269,25 @@ void renderScene(GLFWwindow* window)
 	drawPlanet(sphereContext, texture::uran, 55.0f, 0.1f, time, glm::vec3(1.6f), 2.5);
 	//NEPTUN
 	drawPlanet(sphereContext, texture::neptune, 60.0f, 0.05f, time, glm::vec3(1.8f), 2.5);
-	
-	//DODATKOWE PLANETY S¥ W TEKSTURACH, W RAZIE CZEGO ZNAJDÊ WIÊCEJ
-	//NIE BÊDE ICH DODAWAÆ, BO I TAK MUSIMY USTALIÆ JAK CHCEMY ¯EBY TO WYGL¥DA£O
-	//TAK SAMO NIE DODAM ASTEROID I ŒMIECI, MODELE I TEKSTURY S¥ W FOLDERACH
+
+	glm::vec3 initialAsteroidPosition(0.f, -15.f, 0.f);
+	float spacing = 5.f;
+	for (int row = 0; row < 3; ++row)
+	{
+		for (int col = 0; col < 8; ++col)
+		{
+			glm::vec3 position = initialAsteroidPosition + glm::vec3(col * spacing, 0.f, row * spacing);
+			if (row % 2 == 1)
+			{
+				position.x += spacing * 0.5f;
+			}
+			position.x += sin(time) * 2.0f;
+			transformation = glm::translate(glm::mat4(1.0f), position) *
+				glm::rotate(2.f * time, glm::vec3(0.0f, 1.0f, 0.0f)) *
+				glm::rotate(0.5f * time, glm::vec3(1.0f, 0.0f, 0.0f));
+			drawObjectTexture(asteroidContext, texture::asteroid, transformation);
+		}
+	}
 
 	//STATEK
 	glm::vec3 spaceshipSide = glm::normalize(glm::cross(spaceshipDir, glm::vec3(0.f, 1.f, 0.f)));
@@ -322,6 +335,7 @@ void init(GLFWwindow* window)
 	loadModelToContext("./models/spaceship.fbx", shipContext);
 	loadModelToContext("./models/trash1.dae", trash1Context);
 	loadModelToContext("./models/trash2.dae", trash2Context);
+	loadModelToContext("./models/asteroid.obj", asteroidContext);
 
 	texture::sun[0] = Core::LoadTexture("./textures/sun/sun_albedo.png");
 	texture::sun[1] = Core::LoadTexture("./textures/sun/sun_normal.png");
@@ -391,6 +405,12 @@ void init(GLFWwindow* window)
 	texture::trash2[2] = Core::LoadTexture("./textures/trash/trash2_AO.jpg");
 	texture::trash2[3] = Core::LoadTexture("./textures/trash/trash2_roughness.jpg");
 	texture::trash2[4] = Core::LoadTexture("./textures/trash/trash2_metallic.jpg");
+
+	texture::asteroid[0] = Core::LoadTexture("./textures/asteroid/asteroid_albedo.png");
+	texture::asteroid[1] = Core::LoadTexture("./textures/asteroid/asteroid_normal.png");
+	texture::asteroid[2] = Core::LoadTexture("./textures/planets/mars/mars_ao.jpg");
+	texture::asteroid[3] = Core::LoadTexture("./textures/asteroid/asteroid_roughness.png");
+	texture::asteroid[4] = Core::LoadTexture("./textures/asteroid/asteroid_metallic.png");
 }
 
 void shutdown(GLFWwindow* window)
