@@ -15,20 +15,36 @@
 #include <assimp/postprocess.h>
 #include <string>
 
-namespace texture {
+// teraz o wiele wiêkszy porz¹dek ze zmiennymi
+struct TextureSet {
+	GLuint albedo;
+	GLuint normal;
+	GLuint ao;
+	GLuint roughness;
+	GLuint metallic;
+};
 
-	GLuint sun[2];
-	GLuint spaceship[5];		// PRZYKLAD [0] - ALBEDO, [1] - NORMAL ... ZEBY BYLO MNIEJ ZMIENNYCH
+struct PlanetTextures {
+	TextureSet mercury;
+	TextureSet venus;
+	TextureSet earth;
+	TextureSet mars;
+	TextureSet jupiter;
+	TextureSet saturn;
+	TextureSet uran;
+	TextureSet neptune;
+};
 
-	GLuint mercury[5];
-	GLuint venus[5];
-	GLuint earth[5];
-	GLuint mars[5];
-	GLuint jupiter[5];
-	GLuint saturn[5];
-	GLuint uran[5];
-	GLuint neptune[5];
-}
+struct Textures {
+	TextureSet sun;
+	TextureSet spaceship;
+	PlanetTextures planets;
+	TextureSet trash1;
+	TextureSet trash2;
+	TextureSet asteroid;
+};
+
+Textures textures;
 
 GLuint programDefault;
 GLuint programSun;
@@ -37,6 +53,9 @@ Core::Shader_Loader shaderLoader;
 
 Core::RenderContext shipContext;
 Core::RenderContext sphereContext;
+Core::RenderContext trash1Context;
+Core::RenderContext trash2Context;
+Core::RenderContext asteroidContext;
 
 glm::vec3 cameraPos = glm::vec3(20.f, 0, 0);
 glm::vec3 cameraDir = glm::vec3(-1.f, 0.f, 0.f);
@@ -105,7 +124,7 @@ glm::mat4 createPerspectiveMatrix()
 }
 
 
-void drawShip(GLuint program, Core::RenderContext& context, glm::mat4 modelMatrix, GLuint texture_ID[5]) {
+void drawShip(GLuint program, Core::RenderContext& context, glm::mat4 modelMatrix, TextureSet textures) {
 
 	glm::mat4 viewProjectionMatrix = createPerspectiveMatrix() * createCameraMatrix();
 	glm::mat4 transformation = viewProjectionMatrix * modelMatrix;
@@ -115,17 +134,66 @@ void drawShip(GLuint program, Core::RenderContext& context, glm::mat4 modelMatri
 	glUniform3f(glGetUniformLocation(program, "cameraPos"), cameraPos.x, cameraPos.y, cameraPos.z);
 	glUniform3f(glGetUniformLocation(program, "lightPos"), 0.0f, 0.0f, 0.0f);
 	glUniform3f(glGetUniformLocation(program, "lightColor"), 1.0f, 1.0f, 1.0f);
-	Core::SetActiveTexture(texture_ID[0], "albedoTexture", program, 0);
-	Core::SetActiveTexture(texture_ID[1], "normalTexture", program, 1);
-	Core::SetActiveTexture(texture_ID[2], "aoTexture", program, 2);
-	Core::SetActiveTexture(texture_ID[3], "roughnessTexture", program, 3);
-	Core::SetActiveTexture(texture_ID[4], "metallicTexture", program, 4);
+	Core::SetActiveTexture(textures.albedo, "albedoTexture", program, 0);
+	Core::SetActiveTexture(textures.normal, "normalTexture", program, 1);
+	Core::SetActiveTexture(textures.ao, "aoTexture", program, 2);
+	Core::SetActiveTexture(textures.roughness, "roughnessTexture", program, 3);
+	Core::SetActiveTexture(textures.metallic, "metallicTexture", program, 4);
 
 	Core::DrawContext(context);
 
 }
 
-void drawPlanet(Core::RenderContext& context, GLuint texture_ID[5], float planetOrbitRadius, float planetOrbitSpeed, float time, glm::vec3 scalePlanet, float moonOrbitRadius) {
+void drawObjectTexture(GLuint program,Core::RenderContext& context, TextureSet textures, glm::mat4 modelMatrix) {
+
+	glm::mat4 viewProjectionMatrix = createPerspectiveMatrix() * createCameraMatrix();
+	glm::mat4 transformation = viewProjectionMatrix * modelMatrix;
+
+	glUniformMatrix4fv(glGetUniformLocation(programDefault, "transformation"), 1, GL_FALSE, (float*)&transformation);
+	glUniformMatrix4fv(glGetUniformLocation(programDefault, "modelMatrix"), 1, GL_FALSE, (float*)&modelMatrix);
+	glUniform1f(glGetUniformLocation(programDefault, "exposition"), exposition);
+	glUniform3f(glGetUniformLocation(programDefault, "cameraPos"), cameraPos.x, cameraPos.y, cameraPos.z);
+	glUniform3f(glGetUniformLocation(programDefault, "lightPos"), 0.0f, 0.0f, 0.0f);
+	glUniform3f(glGetUniformLocation(programDefault, "lightColor"), 1.0f, 1.0f, 1.0f);
+	Core::SetActiveTexture(textures.albedo, "albedoTexture", program, 0);
+	Core::SetActiveTexture(textures.normal, "normalTexture", program, 1);
+	Core::SetActiveTexture(textures.ao, "aoTexture", program, 2);
+	Core::SetActiveTexture(textures.roughness, "roughnessTexture", program, 3);
+	Core::SetActiveTexture(textures.metallic, "metallicTexture", program, 4);
+	Core::DrawContext(context);
+
+}
+
+void drawTrash(float planetX, float planetZ, float time, float orbitRadius, glm::vec3 scalePlanet) {
+	float orbitSpeed = 1.5f;
+
+	int numberOfTrash = ceil(scalePlanet.r);
+	for (int i = 1; i <= numberOfTrash; ++i) {
+		
+		float trashX1 = planetX + orbitRadius * cos(orbitSpeed * time + i * 100);
+		float trashZ1 = planetZ + orbitRadius * sin(orbitSpeed * time + i * 50);
+
+		float trashX2 = planetX + orbitRadius * cos(orbitSpeed * time - i * 50);
+		float trashZ2 = planetZ + orbitRadius * sin(orbitSpeed * time - i * 100);
+
+		glm::mat4 modelMatrix1 = glm::translate(glm::vec3(trashX1, 0.5f, trashZ1)) *
+			glm::rotate(2.f * time, glm::vec3(0.0f, 1.0f, 0.0f)) *
+			glm::rotate(0.5f * time, glm::vec3(1.0f, 0.0f, 0.0f)) *
+			glm::scale(scalePlanet / 10.0f);
+
+		glm::mat4 modelMatrix2 = glm::translate(glm::vec3(trashX2, -0.5f, trashZ2)) *
+			glm::rotate(2.f * time, glm::vec3(0.0f, 1.0f, 0.0f)) *
+			glm::rotate(0.5f * time, glm::vec3(1.0f, 0.0f, 0.0f)) *
+			glm::scale(scalePlanet/ 2.f);
+
+		drawObjectTexture(programDefault,trash1Context, textures.trash1, modelMatrix1);
+		drawObjectTexture(programDefault,trash2Context, textures.trash2, modelMatrix2);
+	}
+}
+
+
+
+void drawPlanet(Core::RenderContext& context, TextureSet textures, float planetOrbitRadius, float planetOrbitSpeed, float time, glm::vec3 scalePlanet, float trashOrbitRadius) {
 	float planetX = planetOrbitRadius * cos(planetOrbitSpeed * time);
 	float planetZ = planetOrbitRadius * sin(planetOrbitSpeed * time);
 	glm::mat4 modelMatrix = glm::translate(glm::vec3(planetX, 0, planetZ)) * glm::scale(scalePlanet);
@@ -138,19 +206,21 @@ void drawPlanet(Core::RenderContext& context, GLuint texture_ID[5], float planet
 	glUniform3f(glGetUniformLocation(programDefault, "cameraPos"), cameraPos.x, cameraPos.y, cameraPos.z);
 	glUniform3f(glGetUniformLocation(programDefault, "lightPos"), 0.0f, 0.0f, 0.0f);
 	glUniform3f(glGetUniformLocation(programDefault, "lightColor"), 1.0f, 1.0f, 1.0f);
-	Core::SetActiveTexture(texture_ID[0], "albedoTexture", programDefault, 0);
-	Core::SetActiveTexture(texture_ID[1], "normalTexture", programDefault, 1);
-	Core::SetActiveTexture(texture_ID[2], "aoTexture", programDefault, 2);
-	Core::SetActiveTexture(texture_ID[3], "roughnessTexture", programDefault, 3);
-	Core::SetActiveTexture(texture_ID[4], "metallicTexture", programDefault, 4);
+	Core::SetActiveTexture(textures.albedo, "albedoTexture", programDefault, 0);
+	Core::SetActiveTexture(textures.normal, "normalTexture", programDefault, 1);
+	Core::SetActiveTexture(textures.ao, "aoTexture", programDefault, 2);
+	Core::SetActiveTexture(textures.roughness, "roughnessTexture", programDefault, 3);
+	Core::SetActiveTexture(textures.metallic, "metallicTexture", programDefault, 4);
 	Core::DrawContext(context);
-
 
 	// KSIÊ¯YC
 	//drawMoon(context, glm::vec3(0.8, 0.8, 0.8), planetX, planetZ, time, moonOrbitRadius);
+
+	// THRASH
+	drawTrash(planetX, planetZ, time, trashOrbitRadius,scalePlanet);
 }
 
-void drawSun(Core::RenderContext& context, glm::mat4 modelMatrix, GLuint texture1_ID, GLuint texture2_ID) {
+void drawSun(Core::RenderContext& context, glm::mat4 modelMatrix,TextureSet textures) {
 
 	glm::mat4 viewProjectionMatrix = createPerspectiveMatrix() * createCameraMatrix();
 	glm::mat4 transformation = viewProjectionMatrix * modelMatrix;
@@ -158,21 +228,11 @@ void drawSun(Core::RenderContext& context, glm::mat4 modelMatrix, GLuint texture
 	glUniformMatrix4fv(glGetUniformLocation(programSun, "modelMatrix"), 1, GL_FALSE, (float*)&modelMatrix);
 	glUniform3f(glGetUniformLocation(programSun, "cameraPos"), cameraPos.x, cameraPos.y, cameraPos.z);
 	glUniform3f(glGetUniformLocation(programSun, "lightPos"), 0.0f, 0.0f, 0.0f);
-	Core::SetActiveTexture(texture1_ID, "sunAlbedo", programSun, 0);
-	Core::SetActiveTexture(texture2_ID, "sunNormal", programSun, 1);
-
+	Core::SetActiveTexture(textures.albedo, "sunAlbedo", programSun, 0);
+	Core::SetActiveTexture(textures.normal, "sunNormal", programSun, 1);
 	Core::DrawContext(context);
 
 }
-
-//void drawObjectColor(Core::RenderContext& context, glm::mat4 modelMatrix, glm::vec3 color) {
-//
-//	glm::mat4 viewProjectionMatrix = createPerspectiveMatrix() * createCameraMatrix();
-//	glm::mat4 transformation = viewProjectionMatrix * modelMatrix;
-//	glUniformMatrix4fv(glGetUniformLocation(programDefault, "transformation"), 1, GL_FALSE, (float*)&transformation);
-//	glUniform3f(glGetUniformLocation(programDefault, "color"), color.x, color.y, color.z);
-//	Core::DrawContext(context);
-//}
 
 //void drawMoon(Core::RenderContext& context, glm::vec3 color, float planetX, float planetZ, float time, float moonOrbitRadius) {
 //	float moonOrbitSpeed = 1.5f;
@@ -198,32 +258,49 @@ void renderScene(GLFWwindow* window)
 	glUseProgram(programSun);
 
 	// S£OÑCE
-	drawSun(sphereContext, glm::scale(glm::vec3(10.f)) * glm::translate(glm::vec3(0, 0, 0)), texture::sun[0], texture::sun[1]);
+	drawSun(sphereContext, glm::scale(glm::vec3(10.f)) * glm::translate(glm::vec3(0, 0, 0)), textures.sun);
 
-	glUseProgram(0);
 	glUseProgram(programDefault);
 
 	// UK£AD S£ONECZNY - PLANETY (NA RAZIE BEZ KSIÊ¯YCA)
 	//MERKURY
-	drawPlanet(sphereContext, texture::mercury, 15.0f, 0.4f, time, glm::vec3(0.5),1);
+	drawPlanet(sphereContext, textures.planets.mercury, 15.0f, 0.4f, time, glm::vec3(0.5),1);
 	//WENUS
-	drawPlanet(sphereContext, texture::venus, 20.0f, 0.35f, time, glm::vec3(1.f),1.5);
+	drawPlanet(sphereContext, textures.planets.venus, 20.0f, 0.35f, time, glm::vec3(1.f),1.5);
 	//ZIEMIA
-	drawPlanet(sphereContext, texture::earth, 25.0f, 0.3f, time, glm::vec3(1.3f),2);
+	drawPlanet(sphereContext, textures.planets.earth, 25.0f, 0.3f, time, glm::vec3(1.3f),2);
 	//MARS
-	drawPlanet(sphereContext, texture::mars, 30.0f, 0.25f, time, glm::vec3(1.3f), 2);
+	drawPlanet(sphereContext, textures.planets.mars, 30.0f, 0.25f, time, glm::vec3(1.3f), 2);
 	//JOWISZ
-	drawPlanet(sphereContext, texture::jupiter, 40.0f, 0.2f, time, glm::vec3(2.5f), 3);
+	drawPlanet(sphereContext, textures.planets.jupiter, 40.0f, 0.2f, time, glm::vec3(2.5f), 3);
 	//SATURN - bez pierœcieni (mo¿e dorobiæ póŸniej spróbowaæ?)
-	drawPlanet(sphereContext, texture::saturn, 50.0f, 0.15f, time, glm::vec3(2.2f), 3);
+	drawPlanet(sphereContext, textures.planets.saturn, 50.0f, 0.15f, time, glm::vec3(2.2f), 3);
 	//URAN - tu te¿ teoretycznie pierscienie by mozna dodac
-	drawPlanet(sphereContext, texture::uran, 55.0f, 0.1f, time, glm::vec3(1.6f), 2.5);
+	drawPlanet(sphereContext, textures.planets.uran, 55.0f, 0.1f, time, glm::vec3(1.6f), 2.5);
 	//NEPTUN
-	drawPlanet(sphereContext, texture::neptune, 60.0f, 0.05f, time, glm::vec3(1.8f), 2.5);
-	
-	//DODATKOWE PLANETY S¥ W TEKSTURACH, W RAZIE CZEGO ZNAJDÊ WIÊCEJ
-	//NIE BÊDE ICH DODAWAÆ, BO I TAK MUSIMY USTALIÆ JAK CHCEMY ¯EBY TO WYGL¥DA£O
-	//TAK SAMO NIE DODAM ASTEROID I ŒMIECI, MODELE I TEKSTURY S¥ W FOLDERACH
+	drawPlanet(sphereContext, textures.planets.neptune, 60.0f, 0.05f, time, glm::vec3(1.8f), 2.5);
+
+	glm::vec3 initialAsteroidPosition(0.f, -15.f, 0.f);
+	float spacing = 5.f;
+	float asteroidXOffset = sin(time) * 2.0f;
+
+	// W pêtli
+	for (int row = 0; row < 3; ++row)
+	{
+		for (int col = 0; col < 8; ++col)
+		{
+			glm::vec3 position = initialAsteroidPosition + glm::vec3(col * spacing, 0.f, row * spacing);
+			if (row % 2 == 1)
+			{
+				position.x += spacing * 0.5f;
+			}
+			position.x += asteroidXOffset;
+			transformation = glm::translate(glm::mat4(1.0f), position) *
+				glm::rotate(2.f * time, glm::vec3(0.0f, 1.0f, 0.0f)) *
+				glm::rotate(0.5f * time, glm::vec3(1.0f, 0.0f, 0.0f));
+			drawObjectTexture(programDefault,asteroidContext, textures.asteroid, transformation);
+		}
+	}
 
 	//STATEK
 	glm::vec3 spaceshipSide = glm::normalize(glm::cross(spaceshipDir, glm::vec3(0.f, 1.f, 0.f)));
@@ -234,7 +311,7 @@ void renderScene(GLFWwindow* window)
 		-spaceshipDir.x,-spaceshipDir.y,-spaceshipDir.z,0,
 		0.,0.,0.,1.,
 		});
-	drawShip(programDefault, shipContext, glm::translate(spaceshipPos) * specshipCameraRotrationMatrix * glm::eulerAngleY(glm::pi<float>()) * glm::scale(glm::vec3(0.0004)), texture::spaceship);
+	drawShip(programDefault, shipContext, glm::translate(spaceshipPos) * specshipCameraRotrationMatrix * glm::eulerAngleY(glm::pi<float>()) * glm::scale(glm::vec3(0.0004)), textures.spaceship);
 
 	glUseProgram(0);
 	glfwSwapBuffers(window);
@@ -252,10 +329,50 @@ void loadModelToContext(std::string path, Core::RenderContext& context)
 
 	if (!scene || scene->mFlags & AI_SCENE_FLAGS_INCOMPLETE || !scene->mRootNode)
 	{
-		std::cout << "ERROR::ASSIMP::" << import.GetErrorString() << std::endl;
-		return;
+		throw std::runtime_error("ERROR::ASSIMP::" + std::string(import.GetErrorString()));
 	}
+
+	if (scene->mNumMeshes == 0)
+	{
+		throw std::runtime_error("ERROR::ASSIMP::No meshes found in the model.");
+	}
+
 	context.initFromAssimpMesh(scene->mMeshes[0]);
+}
+
+// ³aduje tekstury
+TextureSet loadTextureSet(const std::string& albedoPath, const std::string& normalPath, const std::string& aoPath, const std::string& roughnessPath, const std::string& metallicPath) {
+	TextureSet textureSet;
+	textureSet.albedo = Core::LoadTexture(albedoPath.c_str());
+	textureSet.normal = Core::LoadTexture(normalPath.c_str());
+	textureSet.ao = Core::LoadTexture(aoPath.c_str());
+	textureSet.roughness = Core::LoadTexture(roughnessPath.c_str());
+	textureSet.metallic = Core::LoadTexture(metallicPath.c_str());
+	return textureSet;
+}
+
+// funkcja do tekstur
+void initTextures() {
+	textures.sun.albedo = Core::LoadTexture("./textures/sun/sun_albedo.png");
+	textures.sun.normal = Core::LoadTexture("./textures/sun/sun_normal.png");
+
+	textures.spaceship.albedo = Core::LoadTexture("./textures/spaceship/spaceship_albedo.jpg");
+	textures.spaceship.normal = Core::LoadTexture("./textures/spaceship/spaceship_normal.jpg");
+	textures.spaceship.ao = Core::LoadTexture("./textures/spaceship/spaceship_ao.jpg");
+	textures.spaceship.roughness = Core::LoadTexture("./textures/spaceship/spaceship_roughness.jpg");
+	textures.spaceship.metallic = Core::LoadTexture("./textures/spaceship/spaceship_metallic.jpg");
+
+	textures.planets.mercury = loadTextureSet("./textures/planets/custom/planet1_albedo.png", "./textures/planets/custom/planet1_normal.png", "./textures/planets/custom/planet1_ao.png", "./textures/planets/custom/planet1_roughness.png", "./textures/planets/custom/planet1_metallic.png");
+	textures.planets.venus = loadTextureSet("./textures/planets/custom/planet2_albedo.png", "./textures/planets/custom/planet2_normal.png", "./textures/planets/custom/planet2_ao.png", "./textures/planets/custom/planet2_roughness.png", "./textures/planets/custom/planet2_metallic.png");
+	textures.planets.earth = loadTextureSet("./textures/planets/earth/earth_albedo.jpg", "./textures/planets/earth/earth_normal.jpg", "./textures/planets/earth/earth_ao.png", "./textures/planets/earth/earth_roughness.jpg", "./textures/planets/earth/earth_metallic.png");
+	textures.planets.mars = loadTextureSet("./textures/planets/mars/mars_albedo.jpg", "./textures/planets/mars/mars_normal.png", "./textures/planets/mars/mars_ao.jpg", "./textures/planets/mars/mars_roughness.jpg", "./textures/planets/mars/mars_metallic.png");
+	textures.planets.jupiter = loadTextureSet("./textures/planets/jupiter/jupiter_albedo.jpg", "./textures/planets/jupiter/jupiter_normal.png", "./textures/planets/jupiter/jupiter_ao.jpg", "./textures/planets/jupiter/jupiter_roughness.jpg", "./textures/planets/jupiter/jupiter_metallic.png");
+	textures.planets.saturn = loadTextureSet("./textures/planets/custom/planet3_albedo.png", "./textures/planets/custom/planet3_normal.png", "./textures/planets/custom/planet3_ao.png", "./textures/planets/custom/planet3_roughness.png", "./textures/planets/custom/planet3_metallic.png");
+	textures.planets.uran = loadTextureSet("./textures/planets/custom/planet5_albedo.jpg", "./textures/planets/custom/planet5_normal.png", "./textures/planets/custom/planet5_ao.jpg", "./textures/planets/custom/planet5_roughness.jpg", "./textures/planets/custom/planet5_metallic.png");
+	textures.planets.neptune = loadTextureSet("./textures/planets/neptune/neptune_albedo.jpg", "./textures/planets/neptune/neptune_normal.png", "./textures/planets/neptune/neptune_ao.jpg", "./textures/planets/neptune/neptune_roughness.jpg", "./textures/planets/neptune/neptune_metallic.png");
+	textures.trash1 = loadTextureSet("./textures/trash/trash1_albedo.jpg", "./textures/trash/trash1_normal.png", "./textures/trash/trash1_AO.jpg", "./textures/trash/trash1_roughness.jpg", "./textures/trash/trash1_metallic.jpg");
+	textures.trash2 = loadTextureSet("./textures/trash/trash2_albedo.jpg", "./textures/trash/trash2_normal.png", "./textures/trash/trash2_AO.jpg", "./textures/trash/trash2_roughness.jpg", "./textures/trash/trash2_metallic.jpg");
+	textures.asteroid = loadTextureSet("./textures/asteroid/asteroid_albedo.png", "./textures/asteroid/asteroid_normal.png", "./textures/planets/mars/mars_ao.jpg", "./textures/asteroid/asteroid_roughness.png", "./textures/asteroid/asteroid_metallic.png");
 }
 
 void init(GLFWwindow* window)
@@ -269,63 +386,11 @@ void init(GLFWwindow* window)
 
 	loadModelToContext("./models/sphere.obj", sphereContext);
 	loadModelToContext("./models/spaceship.fbx", shipContext);
+	loadModelToContext("./models/trash1.dae", trash1Context);
+	loadModelToContext("./models/trash2.dae", trash2Context);
+	loadModelToContext("./models/asteroid.obj", asteroidContext);
 
-	texture::sun[0] = Core::LoadTexture("./textures/sun/sun_albedo.png");
-	texture::sun[1] = Core::LoadTexture("./textures/sun/sun_normal.png");
-
-	texture::spaceship[0] = Core::LoadTexture("./textures/spaceship/spaceship_albedo.jpg");
-	texture::spaceship[1] = Core::LoadTexture("./textures/spaceship/spaceship_normal.jpg");
-	texture::spaceship[2] = Core::LoadTexture("./textures/spaceship/spaceship_ao.jpg");
-	texture::spaceship[3] = Core::LoadTexture("./textures/spaceship/spaceship_roughness.jpg");
-	texture::spaceship[4] = Core::LoadTexture("./textures/spaceship/spaceship_metallic.jpg");
-
-	texture::mercury[0] = Core::LoadTexture("./textures/planets/custom/planet1_albedo.png");
-	texture::mercury[1] = Core::LoadTexture("./textures/planets/custom/planet1_normal.png");
-	texture::mercury[2] = Core::LoadTexture("./textures/planets/custom/planet1_ao.png");
-	texture::mercury[3] = Core::LoadTexture("./textures/planets/custom/planet1_roughness.png");
-	texture::mercury[4] = Core::LoadTexture("./textures/planets/custom/planet1_metallic.png");
-
-	texture::venus[0] = Core::LoadTexture("./textures/planets/custom/planet2_albedo.png");
-	texture::venus[1] = Core::LoadTexture("./textures/planets/custom/planet2_normal.png");
-	texture::venus[2] = Core::LoadTexture("./textures/planets/custom/planet2_ao.png");
-	texture::venus[3] = Core::LoadTexture("./textures/planets/custom/planet2_roughness.png");
-	texture::venus[4] = Core::LoadTexture("./textures/planets/custom/planet2_metallic.png");
-
-	texture::earth[0] = Core::LoadTexture("./textures/planets/earth/earth_albedo.jpg");
-	texture::earth[1] = Core::LoadTexture("./textures/planets/earth/earth_normal.jpg");
-	texture::earth[2] = Core::LoadTexture("./textures/planets/earth/earth_ao.png");
-	texture::earth[3] = Core::LoadTexture("./textures/planets/earth/earth_roughness.jpg");
-	texture::earth[4] = Core::LoadTexture("./textures/planets/earth/earth_metallic.png");
-
-	texture::mars[0] = Core::LoadTexture("./textures/planets/mars/mars_albedo.jpg");
-	texture::mars[1] = Core::LoadTexture("./textures/planets/mars/mars_normal.png");
-	texture::mars[2] = Core::LoadTexture("./textures/planets/mars/mars_ao.jpg");
-	texture::mars[3] = Core::LoadTexture("./textures/planets/mars/mars_roughness.jpg");
-	texture::mars[4] = Core::LoadTexture("./textures/planets/mars/mars_metallic.png");
-
-	texture::jupiter[0] = Core::LoadTexture("./textures/planets/jupiter/jupiter_albedo.jpg");
-	texture::jupiter[1] = Core::LoadTexture("./textures/planets/jupiter/jupiter_normal.png");
-	texture::jupiter[2] = Core::LoadTexture("./textures/planets/jupiter/jupiter_ao.jpg");
-	texture::jupiter[3] = Core::LoadTexture("./textures/planets/jupiter/jupiter_roughness.jpg");
-	texture::jupiter[4] = Core::LoadTexture("./textures/planets/jupiter/jupiter_metallic.png");
-
-	texture::saturn[0] = Core::LoadTexture("./textures/planets/custom/planet3_albedo.png");
-	texture::saturn[1] = Core::LoadTexture("./textures/planets/custom/planet3_normal.png");
-	texture::saturn[2] = Core::LoadTexture("./textures/planets/custom/planet3_ao.png");
-	texture::saturn[3] = Core::LoadTexture("./textures/planets/custom/planet3_roughness.png");
-	texture::saturn[4] = Core::LoadTexture("./textures/planets/custom/planet3_metallic.png");
-
-	texture::uran[0] = Core::LoadTexture("./textures/planets/custom/planet5_albedo.jpg");
-	texture::uran[1] = Core::LoadTexture("./textures/planets/custom/planet5_normal.png");
-	texture::uran[2] = Core::LoadTexture("./textures/planets/custom/planet5_ao.jpg");
-	texture::uran[3] = Core::LoadTexture("./textures/planets/custom/planet5_roughness.jpg");
-	texture::uran[4] = Core::LoadTexture("./textures/planets/custom/planet5_metallic.png");
-
-	texture::neptune[0] = Core::LoadTexture("./textures/planets/neptune/neptune_albedo.jpg");
-	texture::neptune[1] = Core::LoadTexture("./textures/planets/neptune/neptune_normal.png");
-	texture::neptune[2] = Core::LoadTexture("./textures/planets/neptune/neptune_ao.jpg");
-	texture::neptune[3] = Core::LoadTexture("./textures/planets/neptune/neptune_roughness.jpg");
-	texture::neptune[4] = Core::LoadTexture("./textures/planets/neptune/neptune_metallic.png");
+	initTextures();
 }
 
 void shutdown(GLFWwindow* window)
