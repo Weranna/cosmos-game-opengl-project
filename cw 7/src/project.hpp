@@ -81,6 +81,12 @@ float exposition = 1.f;
 
 glm::vec3 lightColor = glm::vec3(0.9, 0.7, 0.8) * 100;
 
+double lastMouseX = 0.0;
+double lastMouseY = 0.0;
+
+float cameraSide = 0.0f;
+float cameraUp = 0.0f;
+
 float lastTime = -1.f;
 float deltaTime = 0.f;
 
@@ -377,6 +383,8 @@ void initTextures() {
 void init(GLFWwindow* window)
 {
 	glfwSetFramebufferSizeCallback(window, framebuffer_size_callback);
+	glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
+	glfwGetCursorPos(window, &lastMouseX, &lastMouseY);
 
 	glEnable(GL_DEPTH_TEST);
 
@@ -403,7 +411,7 @@ void processInput(GLFWwindow* window)
 {
 	glm::vec3 spaceshipSide = glm::normalize(glm::cross(spaceshipDir, glm::vec3(0.f, 1.f, 0.f)));
 	glm::vec3 spaceshipUp = glm::vec3(0.f, 1.f, 0.f);
-	float angleSpeed = 0.05f * deltaTime * 60;
+	float angleSpeed = 0.05f * deltaTime * 10;
 	float moveSpeed = 0.3f * deltaTime * 60;
 	
 	// Kopiuj aktualn¹ pozycjê statku do nowej zmiennej
@@ -449,9 +457,27 @@ void processInput(GLFWwindow* window)
 	if (glfwGetKey(window, GLFW_KEY_2) == GLFW_PRESS)
 		exposition += 0.05;
 
-	if (collisionDetected) {
-		std::cout << "kolizja";
-	}
+	
+	double mouseX, mouseY;
+	glfwGetCursorPos(window, &mouseX, &mouseY);
+
+	double mouseMoveX = mouseX - lastMouseX;
+	double mouseMoveY = mouseY - lastMouseY;
+	float mouseSensitivity = 0.1f;
+
+	cameraSide += static_cast<float>(mouseMoveX) * mouseSensitivity;
+	cameraUp -= static_cast<float>(mouseMoveY) * mouseSensitivity;
+
+	cameraUp = glm::clamp(cameraUp, -89.0f, 89.0f);
+
+	lastMouseX = mouseX;
+	lastMouseY = mouseY;
+
+	glm::vec3 front;
+	front.x = cos(glm::radians(cameraSide)) * cos(glm::radians(cameraUp));
+	front.y = sin(glm::radians(cameraUp));
+	front.z = sin(glm::radians(cameraSide)) * cos(glm::radians(cameraUp));
+	cameraDir = glm::normalize(front);
 
 }
 
