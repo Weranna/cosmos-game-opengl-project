@@ -43,6 +43,7 @@ struct Textures {
 	TextureSet trash2;
 	TextureSet asteroid;
 	TextureSet laser;
+	TextureSet sprite;
 };
 
 struct Laser {
@@ -71,6 +72,10 @@ Planets planets;
 
 GLuint programDefault;
 GLuint programSun;
+GLuint programSprite;
+
+GLuint VAO_sprite, VBO_sprite;
+bool showSprite = false;
 
 Core::Shader_Loader shaderLoader;
 
@@ -118,6 +123,7 @@ void updateDeltaTime(float time) {
 	if (deltaTime > 0.1) deltaTime = 0.1;
 	lastTime = time;
 }
+
 glm::mat4 createCameraMatrix()
 {
 	glm::vec3 cameraSide = glm::normalize(glm::cross(cameraDir, glm::vec3(0.f, 1.f, 0.f)));
@@ -246,6 +252,56 @@ void drawSun(Core::RenderContext& context, glm::mat4 modelMatrix,TextureSet text
 
 }
 
+void initSprite()
+{
+	float vertices[] = {
+		0.0f, 1.0f, 0.0f, 1.0f,
+		1.0f, 0.0f, 1.0f, 0.0f,
+		0.0f, 0.0f, 0.0f, 0.0f,
+
+		0.0f, 1.0f, 0.0f, 1.0f,
+		1.0f, 1.0f, 1.0f, 1.0f,
+		1.0f, 0.0f, 1.0f, 0.0f
+	};
+
+	glGenVertexArrays(1, &VAO_sprite);
+	glGenBuffers(1, &VBO_sprite);
+
+	glBindVertexArray(VAO_sprite);
+
+	glBindBuffer(GL_ARRAY_BUFFER, VBO_sprite);
+	glBufferData(GL_ARRAY_BUFFER, sizeof(vertices), vertices, GL_STATIC_DRAW);
+
+	glBindVertexArray(VAO_sprite);
+	glEnableVertexAttribArray(0);
+	glVertexAttribPointer(0, 4, GL_FLOAT, GL_FALSE, 4 * sizeof(float), (void*)0);
+	glBindBuffer(GL_ARRAY_BUFFER, 0);
+	glBindVertexArray(0);
+}
+
+void drawSprite(GLuint textureID)
+{
+	glUseProgram(programSprite);
+
+	glm::mat4 projection = glm::ortho(0.0f, 1000.0f, 1000.0f, 0.0f, -1.0f, 1.0f);
+	glm::mat4 model = glm::mat4(1.0f);
+	model = glm::translate(model, glm::vec3(500.0f - 752.0f / 2.0f, 500.0f - 624.0f / 2.0f, 0.0f));
+	model = glm::scale(model, glm::vec3(glm::vec2(752.0f, 624.0f), 1.0f));
+
+	glUniformMatrix4fv(glGetUniformLocation(programSprite, "projection"), 1, GL_FALSE, (float*)&projection);
+	glUniformMatrix4fv(glGetUniformLocation(programSprite, "model"), 1, GL_FALSE, (float*)&model);
+
+	glActiveTexture(GL_TEXTURE0);
+	glBindTexture(GL_TEXTURE_2D, textureID);
+	GLuint textureLocation = glGetUniformLocation(programSprite, "spriteTexture");
+	glUniform1i(textureLocation, 0);
+
+	glBindVertexArray(VAO_sprite);
+	glDrawArrays(GL_TRIANGLES, 0, 6);
+	glBindVertexArray(0);
+
+	glUseProgram(0);
+}
 
 //void drawMoon(Core::RenderContext& context, glm::vec3 color, float planetX, float planetZ, float time, float moonOrbitRadius) {
 //	float moonOrbitSpeed = 1.5f;
@@ -358,6 +414,12 @@ void renderScene(GLFWwindow* window)
 		}
 	}
 
+	if (showSprite)
+	{
+		glUseProgram(programSprite);
+		drawSprite(textures.sprite.albedo);
+	}
+
 	glUseProgram(0);
 	glfwSwapBuffers(window);
 }
@@ -398,6 +460,8 @@ TextureSet loadTextureSet(const std::string& albedoPath, const std::string& norm
 
 // funkcja do tekstur
 void initTextures() {
+	textures.sprite.albedo = Core::LoadTexture("./img/mission_board_1.png");
+
 	textures.sun.albedo = Core::LoadTexture("./textures/sun/sun_albedo.png");
 	textures.sun.normal = Core::LoadTexture("./textures/sun/sun_normal.png");
 
@@ -431,6 +495,7 @@ void init(GLFWwindow* window)
 
 	programDefault = shaderLoader.CreateProgram("shaders/shader_default.vert", "shaders/shader_default.frag");
 	programSun = shaderLoader.CreateProgram("shaders/shader_sun.vert", "shaders/shader_sun.frag");
+	programSprite = shaderLoader.CreateProgram("shaders/shader_sprite.vert", "shaders/shader_sprite.frag");
 
 	loadModelToContext("./models/sphere.obj", sphereContext);
 	loadModelToContext("./models/spaceship.fbx", shipContext);
@@ -440,6 +505,7 @@ void init(GLFWwindow* window)
 	loadModelToContext("./models/laser.obj", laserContext);
 
 	initTextures();
+	initSprite();
 }
 
 void shutdown(GLFWwindow* window)
@@ -465,6 +531,14 @@ void processInput(GLFWwindow* window)
 		newSpaceshipPos += spaceshipDir * moveSpeed;
 	if (glfwGetKey(window, GLFW_KEY_S) == GLFW_PRESS)
 		newSpaceshipPos -= spaceshipDir * moveSpeed;
+	if (glfwGetKey(window, GLFW_KEY_TAB) == GLFW_PRESS)		// M pokazuje tablice z misjami
+	{
+		showSprite = true;
+	}
+	else
+	{
+		showSprite = false;
+	}
 
 	// SprawdŸ kolizjê po dodaniu wartoœci
 	checkCollision(newSpaceshipPos, 0.5f);
@@ -479,13 +553,6 @@ void processInput(GLFWwindow* window)
 
 	cameraPos = spaceshipPos - 1.5 * spaceshipDir + glm::vec3(0, 1, 0) * 0.5f;
 	cameraDir = spaceshipDir;
-	
-	// moc swiatla zmiana
-	//if (glfwGetKey(window, GLFW_KEY_1) == GLFW_PRESS)
-	//	exposition -= 0.05;
-	//if (glfwGetKey(window, GLFW_KEY_2) == GLFW_PRESS)
-	//	exposition += 0.05;
-
 	
 	double mouseX, mouseY;
 	glfwGetCursorPos(window, &mouseX, &mouseY);
@@ -534,4 +601,3 @@ void renderLoop(GLFWwindow* window) {
 		glfwPollEvents();
 	}
 }
-//}
