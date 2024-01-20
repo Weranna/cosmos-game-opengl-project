@@ -42,7 +42,20 @@ struct Textures {
 	TextureSet trash1;
 	TextureSet trash2;
 	TextureSet asteroid;
+	TextureSet laser;
 };
+
+struct Laser {
+	glm::vec3 position;
+	glm::vec3 direction;
+	float startTime;
+	const float duration = 0.5f;  // Ile leci laser
+	bool isActive;
+	glm::quat laserRotation;
+
+	Laser() : position(0.0f), direction(0.0f), startTime(0.0f), isActive(false), laserRotation(1.0f, 0.0f, 0.0f, 0.0f) {}
+};
+
 
 struct ObjectInfo {
 	glm::vec3 coordinates;
@@ -67,6 +80,8 @@ Core::RenderContext trash1Context;
 Core::RenderContext trash2Context;
 Core::RenderContext asteroidContext;
 Core::RenderContext laserContext;
+
+Laser laser;
 
 glm::vec3 cameraPos = glm::vec3(20.f, 0, 0);
 glm::vec3 cameraDir = glm::vec3(-1.f, 0.f, 0.f);
@@ -290,7 +305,7 @@ void renderScene(GLFWwindow* window)
 	float spacing = 5.f;
 	float asteroidXOffset = sin(time) * 2.0f;
 
-	// W pêtli
+	// W pêtli asteroidy
 	for (int row = 0; row < 3; ++row)
 	{
 		for (int col = 0; col < 8; ++col)
@@ -320,6 +335,28 @@ void renderScene(GLFWwindow* window)
 		0.,0.,0.,1.,
 		});
 	drawObjectTexture(programDefault, shipContext, textures.spaceship, glm::translate(spaceshipPos) * spaceshipCameraRotationMatrix * glm::eulerAngleY(glm::pi<float>()) * glm::scale(glm::vec3(0.0004)));
+
+	// Czy wystrzelono laser
+	if (laser.isActive)
+	{
+		float currentTime = glfwGetTime();
+		float elapsedTime = currentTime - laser.startTime;
+
+		if (elapsedTime < laser.duration)
+		{
+			float laserSpeed = 25.0f;
+			laser.position += laser.direction * laserSpeed * deltaTime;
+
+			// Rysuj laser
+			glm::mat4 laserModelMatrix = glm::translate(laser.position) * glm::mat4_cast(laser.laserRotation) * glm::scale(glm::vec3(0.0005f));
+			drawObjectTexture(programDefault, laserContext, textures.laser, laserModelMatrix);
+		}
+		else
+		{
+			// Po czasie deaktywuj laser - znika
+			laser.isActive = false;
+		}
+	}
 
 	glUseProgram(0);
 	glfwSwapBuffers(window);
@@ -381,6 +418,7 @@ void initTextures() {
 	textures.trash1 = loadTextureSet("./textures/trash/trash1_albedo.jpg", "./textures/trash/trash1_normal.png", "./textures/trash/trash1_AO.jpg", "./textures/trash/trash1_roughness.jpg", "./textures/trash/trash1_metallic.jpg");
 	textures.trash2 = loadTextureSet("./textures/trash/trash2_albedo.jpg", "./textures/trash/trash2_normal.png", "./textures/trash/trash2_AO.jpg", "./textures/trash/trash2_roughness.jpg", "./textures/trash/trash2_metallic.jpg");
 	textures.asteroid = loadTextureSet("./textures/asteroid/asteroid_albedo.png", "./textures/asteroid/asteroid_normal.png", "./textures/planets/mars/mars_ao.jpg", "./textures/asteroid/asteroid_roughness.png", "./textures/asteroid/asteroid_metallic.png");
+	textures.laser = loadTextureSet("./textures/spaceship/laser_albedo.jpg","./textures/spaceship/laser_normal.png","./textures/spaceship/laser_ao.jpg","./textures/spaceship/laser_roughness.jpg","./textures/spaceship/laser_metallic.jpg");
 }
 
 void init(GLFWwindow* window)
@@ -427,20 +465,6 @@ void processInput(GLFWwindow* window)
 		newSpaceshipPos += spaceshipDir * moveSpeed;
 	if (glfwGetKey(window, GLFW_KEY_S) == GLFW_PRESS)
 		newSpaceshipPos -= spaceshipDir * moveSpeed;
-	if (glfwGetKey(window, GLFW_KEY_X) == GLFW_PRESS)
-		newSpaceshipPos += spaceshipSide * moveSpeed;
-	if (glfwGetKey(window, GLFW_KEY_Z) == GLFW_PRESS)
-		newSpaceshipPos -= spaceshipSide * moveSpeed;
-	if (glfwGetKey(window, GLFW_KEY_Q) == GLFW_PRESS)
-		newSpaceshipPos += spaceshipUp * moveSpeed;
-	if (glfwGetKey(window, GLFW_KEY_E) == GLFW_PRESS)
-		newSpaceshipPos -= spaceshipUp * moveSpeed;
-	if (glfwGetKey(window, GLFW_KEY_A) == GLFW_PRESS) {
-		spaceshipDir = glm::vec3(glm::eulerAngleY(angleSpeed) * glm::vec4(spaceshipDir, 0));
-	}
-	if (glfwGetKey(window, GLFW_KEY_D) == GLFW_PRESS) {
-		spaceshipDir = glm::vec3(glm::eulerAngleY(-angleSpeed) * glm::vec4(spaceshipDir, 0));
-	}
 
 	// SprawdŸ kolizjê po dodaniu wartoœci
 	checkCollision(newSpaceshipPos, 0.5f);
@@ -452,8 +476,6 @@ void processInput(GLFWwindow* window)
 
 	// Zresetuj flagê kolizji
 	collisionDetected = false;
-	
-		spaceshipPos -= spaceshipDir * moveSpeed;
 
 	cameraPos = spaceshipPos - 1.5 * spaceshipDir + glm::vec3(0, 1, 0) * 0.5f;
 	cameraDir = spaceshipDir;
@@ -489,6 +511,16 @@ void processInput(GLFWwindow* window)
 
 	glm::quat spaceshipRotation = glm::quat(glm::vec3(glm::radians(spaceshipUp), glm::radians(-spaceshipSide), 0.0f));
 	spaceshipDir = glm::lerp(spaceshipDir, glm::rotate(spaceshipRotation, glm::vec3(0.0f, 0.0f, -1.0f)), 0.1f);
+
+	if (glfwGetKey(window, GLFW_KEY_SPACE) == GLFW_PRESS && !laser.isActive)
+	{
+		// wystrzel laser po spacji
+		laser.isActive = true;
+		laser.position = spaceshipPos;
+		laser.direction = spaceshipDir;
+		laser.startTime = glfwGetTime();
+		laser.laserRotation = glm::quat(glm::vec3(glm::radians(spaceshipUp), glm::radians(-spaceshipSide), 0.0f));
+	}
 
 }
 
