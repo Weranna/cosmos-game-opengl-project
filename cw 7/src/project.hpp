@@ -44,7 +44,17 @@ struct Textures {
 	TextureSet asteroid;
 };
 
+struct ObjectInfo {
+	glm::vec3 coordinates;
+	float orbit;
+};
+
+struct Planets { 
+	std::map<std::string, ObjectInfo> planetsProperties;
+};
+
 Textures textures;
+Planets planets;
 
 GLuint programDefault;
 GLuint programSun;
@@ -56,6 +66,7 @@ Core::RenderContext sphereContext;
 Core::RenderContext trash1Context;
 Core::RenderContext trash2Context;
 Core::RenderContext asteroidContext;
+Core::RenderContext laserContext;
 
 glm::vec3 cameraPos = glm::vec3(20.f, 0, 0);
 glm::vec3 cameraDir = glm::vec3(-1.f, 0.f, 0.f);
@@ -66,10 +77,8 @@ glm::vec3 spaceshipDir = glm::vec3(-1.f, 0.f, 0.f);
 GLuint VAO, VBO;
 
 float aspectRatio = 1.f;
-
 float exposition = 1.f;
 
-glm::vec3 lightPos = glm::vec3(0, 0.f, 0);
 glm::vec3 lightColor = glm::vec3(0.9, 0.7, 0.8) * 100;
 
 double lastMouseX = 0.0;
@@ -131,27 +140,6 @@ glm::mat4 createPerspectiveMatrix()
 	return perspectiveMatrix;
 }
 
-
-void drawShip(GLuint program, Core::RenderContext& context, glm::mat4 modelMatrix, TextureSet textures) {
-
-	glm::mat4 viewProjectionMatrix = createPerspectiveMatrix() * createCameraMatrix();
-	glm::mat4 transformation = viewProjectionMatrix * modelMatrix;
-	glUniformMatrix4fv(glGetUniformLocation(program, "transformation"), 1, GL_FALSE, (float*)&transformation);
-	glUniformMatrix4fv(glGetUniformLocation(program, "modelMatrix"), 1, GL_FALSE, (float*)&modelMatrix);
-	glUniform1f(glGetUniformLocation(program, "exposition"), exposition);
-	glUniform3f(glGetUniformLocation(program, "cameraPos"), cameraPos.x, cameraPos.y, cameraPos.z);
-	glUniform3f(glGetUniformLocation(program, "lightPos"), 0.0f, 0.0f, 0.0f);
-	glUniform3f(glGetUniformLocation(program, "lightColor"), 1.0f, 1.0f, 1.0f);
-	Core::SetActiveTexture(textures.albedo, "albedoTexture", program, 0);
-	Core::SetActiveTexture(textures.normal, "normalTexture", program, 1);
-	Core::SetActiveTexture(textures.ao, "aoTexture", program, 2);
-	Core::SetActiveTexture(textures.roughness, "roughnessTexture", program, 3);
-	Core::SetActiveTexture(textures.metallic, "metallicTexture", program, 4);
-
-	Core::DrawContext(context);
-
-}
-
 void drawObjectTexture(GLuint program,Core::RenderContext& context, TextureSet textures, glm::mat4 modelMatrix) {
 
 	glm::mat4 viewProjectionMatrix = createPerspectiveMatrix() * createCameraMatrix();
@@ -200,10 +188,11 @@ void drawTrash(float planetX, float planetZ, float time, float orbitRadius, glm:
 }
 
 
-
-void drawPlanet(Core::RenderContext& context, TextureSet textures, float planetOrbitRadius, float planetOrbitSpeed, float time, glm::vec3 scalePlanet, float trashOrbitRadius) {
+void drawPlanet(Core::RenderContext& context, TextureSet textures, float planetOrbitRadius, float planetOrbitSpeed, float time, glm::vec3 scalePlanet, float trashOrbitRadius, std::string& planetName) {
 	float planetX = planetOrbitRadius * cos(planetOrbitSpeed * time);
 	float planetZ = planetOrbitRadius * sin(planetOrbitSpeed * time);
+	
+	planets.planetsProperties[planetName] = { glm::vec3(planetX,0.f,planetZ), scalePlanet.x};
 	glm::mat4 modelMatrix = glm::translate(glm::vec3(planetX, 0, planetZ)) * glm::scale(scalePlanet);
 	glm::mat4 viewProjectionMatrix = createPerspectiveMatrix() * createCameraMatrix();
 	glm::mat4 transformation = viewProjectionMatrix * modelMatrix;
@@ -242,6 +231,7 @@ void drawSun(Core::RenderContext& context, glm::mat4 modelMatrix,TextureSet text
 
 }
 
+
 //void drawMoon(Core::RenderContext& context, glm::vec3 color, float planetX, float planetZ, float time, float moonOrbitRadius) {
 //	float moonOrbitSpeed = 1.5f;
 //	float moonX = planetX + moonOrbitRadius * cos(moonOrbitSpeed * time);
@@ -253,6 +243,18 @@ void drawSun(Core::RenderContext& context, glm::mat4 modelMatrix,TextureSet text
 //	glUniformMatrix4fv(glGetUniformLocation(programDefault, "transformation"), 1, GL_FALSE, (float*)&transformation);
 //	Core::DrawContext(context);
 //}
+bool collisionDetected = false;
+
+void checkCollision(glm::vec3 object1Pos, float object1Radius) {
+	
+	for (const auto& pair : planets.planetsProperties) {
+		float distance = glm::length(object1Pos - pair.second.coordinates);
+		if (distance < (object1Radius + pair.second.orbit)) {
+			collisionDetected = true;
+			break;
+		}
+	}
+}
 
 void renderScene(GLFWwindow* window)
 {
@@ -265,28 +267,24 @@ void renderScene(GLFWwindow* window)
 
 	glUseProgram(programSun);
 
+	collisionDetected = false;
+
 	// S£OÑCE
-	drawSun(sphereContext, glm::scale(glm::vec3(10.f)) * glm::translate(glm::vec3(0, 0, 0)), textures.sun);
+	glm::vec3 sunPosition = glm::vec3(0, 0, 0);
+	planets.planetsProperties["Sun"] = { sunPosition, 10.0f };
+	drawSun(sphereContext, glm::scale(glm::vec3(10.f)) * glm::translate(sunPosition), textures.sun);
 
 	glUseProgram(programDefault);
 
 	// UK£AD S£ONECZNY - PLANETY (NA RAZIE BEZ KSIÊ¯YCA)
-	//MERKURY
-	drawPlanet(sphereContext, textures.planets.mercury, 15.0f, 0.4f, time, glm::vec3(0.5),1);
-	//WENUS
-	drawPlanet(sphereContext, textures.planets.venus, 20.0f, 0.35f, time, glm::vec3(1.f),1.5);
-	//ZIEMIA
-	drawPlanet(sphereContext, textures.planets.earth, 25.0f, 0.3f, time, glm::vec3(1.3f),2);
-	//MARS
-	drawPlanet(sphereContext, textures.planets.mars, 30.0f, 0.25f, time, glm::vec3(1.3f), 2);
-	//JOWISZ
-	drawPlanet(sphereContext, textures.planets.jupiter, 40.0f, 0.2f, time, glm::vec3(2.5f), 3);
-	//SATURN - bez pierœcieni (mo¿e dorobiæ póŸniej spróbowaæ?)
-	drawPlanet(sphereContext, textures.planets.saturn, 50.0f, 0.15f, time, glm::vec3(2.2f), 3);
-	//URAN - tu te¿ teoretycznie pierscienie by mozna dodac
-	drawPlanet(sphereContext, textures.planets.uran, 55.0f, 0.1f, time, glm::vec3(1.6f), 2.5);
-	//NEPTUN
-	drawPlanet(sphereContext, textures.planets.neptune, 60.0f, 0.05f, time, glm::vec3(1.8f), 2.5);
+	drawPlanet(sphereContext, textures.planets.mercury, 15.0f, 0.4f, time, glm::vec3(0.5),1, std::string("Mercury"));
+	drawPlanet(sphereContext, textures.planets.venus, 20.0f, 0.35f, time, glm::vec3(1.f),1.5, std::string("Wenus"));
+	drawPlanet(sphereContext, textures.planets.earth, 25.0f, 0.3f, time, glm::vec3(1.3f),2, std::string("Earth"));
+	drawPlanet(sphereContext, textures.planets.mars, 30.0f, 0.25f, time, glm::vec3(1.3f), 2, std::string("Mars"));
+	drawPlanet(sphereContext, textures.planets.jupiter, 40.0f, 0.2f, time, glm::vec3(2.5f), 3, std::string("Jupiter"));
+	drawPlanet(sphereContext, textures.planets.saturn, 50.0f, 0.15f, time, glm::vec3(2.2f), 3, std::string("Saturn"));
+	drawPlanet(sphereContext, textures.planets.uran, 55.0f, 0.1f, time, glm::vec3(1.6f), 2.5, std::string("Uran"));
+	drawPlanet(sphereContext, textures.planets.neptune, 60.0f, 0.05f, time, glm::vec3(1.8f), 2.5, std::string("Neptun"));
 
 	glm::vec3 initialAsteroidPosition(0.f, -15.f, 0.f);
 	float spacing = 5.f;
@@ -306,20 +304,22 @@ void renderScene(GLFWwindow* window)
 			transformation = glm::translate(glm::mat4(1.0f), position) *
 				glm::rotate(2.f * time, glm::vec3(0.0f, 1.0f, 0.0f)) *
 				glm::rotate(0.5f * time, glm::vec3(1.0f, 0.0f, 0.0f));
+
+			//checkCollision(spaceshipPos, 0.5f, position, 2.f);
+
 			drawObjectTexture(programDefault,asteroidContext, textures.asteroid, transformation);
 		}
 	}
-
 	//STATEK
 	glm::vec3 spaceshipSide = glm::normalize(glm::cross(spaceshipDir, glm::vec3(0.f, 1.f, 0.f)));
 	glm::vec3 spaceshipUp = glm::normalize(glm::cross(spaceshipSide, spaceshipDir));
-	glm::mat4 specshipCameraRotrationMatrix = glm::mat4({
+	glm::mat4 spaceshipCameraRotationMatrix = glm::mat4({
 		spaceshipSide.x,spaceshipSide.y,spaceshipSide.z,0,
 		spaceshipUp.x,spaceshipUp.y,spaceshipUp.z ,0,
 		-spaceshipDir.x,-spaceshipDir.y,-spaceshipDir.z,0,
 		0.,0.,0.,1.,
 		});
-	drawShip(programDefault, shipContext, glm::translate(spaceshipPos) * specshipCameraRotrationMatrix * glm::eulerAngleY(glm::pi<float>()) * glm::scale(glm::vec3(0.0004)), textures.spaceship);
+	drawObjectTexture(programDefault, shipContext, textures.spaceship, glm::translate(spaceshipPos) * spaceshipCameraRotationMatrix * glm::eulerAngleY(glm::pi<float>()) * glm::scale(glm::vec3(0.0004)));
 
 	glUseProgram(0);
 	glfwSwapBuffers(window);
@@ -399,6 +399,7 @@ void init(GLFWwindow* window)
 	loadModelToContext("./models/trash1.dae", trash1Context);
 	loadModelToContext("./models/trash2.dae", trash2Context);
 	loadModelToContext("./models/asteroid.obj", asteroidContext);
+	loadModelToContext("./models/laser.obj", laserContext);
 
 	initTextures();
 }
@@ -413,13 +414,45 @@ void processInput(GLFWwindow* window)
 {
 	float angleSpeed = 0.05f * deltaTime * 10;
 	float moveSpeed = 0.3f * deltaTime * 60;
+	
+	// Kopiuj aktualn¹ pozycjê statku do nowej zmiennej
+	glm::vec3 newSpaceshipPos = spaceshipPos;
+
+	// SprawdŸ kolizjê po dodaniu wartoœci
 
 	if (glfwGetKey(window, GLFW_KEY_ESCAPE) == GLFW_PRESS) {
 		glfwSetWindowShouldClose(window, true);
 	}
 	if (glfwGetKey(window, GLFW_KEY_W) == GLFW_PRESS)
-		spaceshipPos += spaceshipDir * moveSpeed;
+		newSpaceshipPos += spaceshipDir * moveSpeed;
 	if (glfwGetKey(window, GLFW_KEY_S) == GLFW_PRESS)
+		newSpaceshipPos -= spaceshipDir * moveSpeed;
+	if (glfwGetKey(window, GLFW_KEY_X) == GLFW_PRESS)
+		newSpaceshipPos += spaceshipSide * moveSpeed;
+	if (glfwGetKey(window, GLFW_KEY_Z) == GLFW_PRESS)
+		newSpaceshipPos -= spaceshipSide * moveSpeed;
+	if (glfwGetKey(window, GLFW_KEY_Q) == GLFW_PRESS)
+		newSpaceshipPos += spaceshipUp * moveSpeed;
+	if (glfwGetKey(window, GLFW_KEY_E) == GLFW_PRESS)
+		newSpaceshipPos -= spaceshipUp * moveSpeed;
+	if (glfwGetKey(window, GLFW_KEY_A) == GLFW_PRESS) {
+		spaceshipDir = glm::vec3(glm::eulerAngleY(angleSpeed) * glm::vec4(spaceshipDir, 0));
+	}
+	if (glfwGetKey(window, GLFW_KEY_D) == GLFW_PRESS) {
+		spaceshipDir = glm::vec3(glm::eulerAngleY(-angleSpeed) * glm::vec4(spaceshipDir, 0));
+	}
+
+	// SprawdŸ kolizjê po dodaniu wartoœci
+	checkCollision(newSpaceshipPos, 0.5f);
+
+	// Jeœli nie wykryto kolizji, zaktualizuj pozycjê statku
+	if (!collisionDetected) {
+		spaceshipPos = newSpaceshipPos;
+	}
+
+	// Zresetuj flagê kolizji
+	collisionDetected = false;
+	
 		spaceshipPos -= spaceshipDir * moveSpeed;
 
 	cameraPos = spaceshipPos - 1.5 * spaceshipDir + glm::vec3(0, 1, 0) * 0.5f;
@@ -431,6 +464,7 @@ void processInput(GLFWwindow* window)
 	//if (glfwGetKey(window, GLFW_KEY_2) == GLFW_PRESS)
 	//	exposition += 0.05;
 
+	
 	double mouseX, mouseY;
 	glfwGetCursorPos(window, &mouseX, &mouseY);
 
