@@ -78,6 +78,9 @@ double lastMouseY = 0.0;
 float cameraSide = 0.0f;
 float cameraUp = 0.0f;
 
+float spaceshipSide = 0.0f;
+float spaceshipUp = 0.0f;
+
 float lastTime = -1.f;
 float deltaTime = 0.f;
 
@@ -408,10 +411,9 @@ void shutdown(GLFWwindow* window)
 //obsluga wejscia
 void processInput(GLFWwindow* window)
 {
-	glm::vec3 spaceshipSide = glm::normalize(glm::cross(spaceshipDir, glm::vec3(0.f, 1.f, 0.f)));
-	glm::vec3 spaceshipUp = glm::vec3(0.f, 1.f, 0.f);
 	float angleSpeed = 0.05f * deltaTime * 10;
 	float moveSpeed = 0.3f * deltaTime * 60;
+
 	if (glfwGetKey(window, GLFW_KEY_ESCAPE) == GLFW_PRESS) {
 		glfwSetWindowShouldClose(window, true);
 	}
@@ -419,26 +421,15 @@ void processInput(GLFWwindow* window)
 		spaceshipPos += spaceshipDir * moveSpeed;
 	if (glfwGetKey(window, GLFW_KEY_S) == GLFW_PRESS)
 		spaceshipPos -= spaceshipDir * moveSpeed;
-	if (glfwGetKey(window, GLFW_KEY_X) == GLFW_PRESS)
-		spaceshipPos += spaceshipSide * moveSpeed;
-	if (glfwGetKey(window, GLFW_KEY_Z) == GLFW_PRESS)
-		spaceshipPos -= spaceshipSide * moveSpeed;
-	if (glfwGetKey(window, GLFW_KEY_Q) == GLFW_PRESS)
-		spaceshipPos += spaceshipUp * moveSpeed;
-	if (glfwGetKey(window, GLFW_KEY_E) == GLFW_PRESS)
-		spaceshipPos -= spaceshipUp * moveSpeed;
-	if (glfwGetKey(window, GLFW_KEY_A) == GLFW_PRESS)
-		spaceshipDir = glm::vec3(glm::eulerAngleY(angleSpeed) * glm::vec4(spaceshipDir, 0));
-	if (glfwGetKey(window, GLFW_KEY_D) == GLFW_PRESS)
-		spaceshipDir = glm::vec3(glm::eulerAngleY(-angleSpeed) * glm::vec4(spaceshipDir, 0));
 
 	cameraPos = spaceshipPos - 1.5 * spaceshipDir + glm::vec3(0, 1, 0) * 0.5f;
 	cameraDir = spaceshipDir;
-
-	if (glfwGetKey(window, GLFW_KEY_1) == GLFW_PRESS)
-		exposition -= 0.05;
-	if (glfwGetKey(window, GLFW_KEY_2) == GLFW_PRESS)
-		exposition += 0.05;
+	
+	// moc swiatla zmiana
+	//if (glfwGetKey(window, GLFW_KEY_1) == GLFW_PRESS)
+	//	exposition -= 0.05;
+	//if (glfwGetKey(window, GLFW_KEY_2) == GLFW_PRESS)
+	//	exposition += 0.05;
 
 	double mouseX, mouseY;
 	glfwGetCursorPos(window, &mouseX, &mouseY);
@@ -450,16 +441,20 @@ void processInput(GLFWwindow* window)
 	cameraSide += static_cast<float>(mouseMoveX) * mouseSensitivity;
 	cameraUp -= static_cast<float>(mouseMoveY) * mouseSensitivity;
 
+	spaceshipSide += static_cast<float>(mouseMoveX) * mouseSensitivity;
+	spaceshipUp -= static_cast<float>(mouseMoveY) * mouseSensitivity;
+
 	cameraUp = glm::clamp(cameraUp, -89.0f, 89.0f);
+	spaceshipUp = glm::clamp(cameraUp, -89.0f, 89.0f);
 
 	lastMouseX = mouseX;
 	lastMouseY = mouseY;
 
-	glm::vec3 front;
-	front.x = cos(glm::radians(cameraSide)) * cos(glm::radians(cameraUp));
-	front.y = sin(glm::radians(cameraUp));
-	front.z = sin(glm::radians(cameraSide)) * cos(glm::radians(cameraUp));
-	cameraDir = glm::normalize(front);
+	glm::quat cameraRotation = glm::quat(glm::vec3(glm::radians(cameraUp), glm::radians(-cameraSide), 0.0f));
+	cameraDir = glm::lerp(cameraDir, glm::rotate(cameraRotation, glm::vec3(0.0f, 0.0f, -1.0f)), 0.1f);
+
+	glm::quat spaceshipRotation = glm::quat(glm::vec3(glm::radians(spaceshipUp), glm::radians(-spaceshipSide), 0.0f));
+	spaceshipDir = glm::lerp(spaceshipDir, glm::rotate(spaceshipRotation, glm::vec3(0.0f, 0.0f, -1.0f)), 0.1f);
 
 }
 
