@@ -14,6 +14,7 @@
 #include <assimp/scene.h>
 #include <assimp/postprocess.h>
 #include <string>
+#include <random>
 
 // teraz o wiele wiêkszy porz¹dek ze zmiennymi
 struct TextureSet {
@@ -65,16 +66,22 @@ struct ObjectInfo {
 
 struct Planets { 
 	std::map<std::string, ObjectInfo> planetsProperties;
+	std::map<std::string, std::vector<ObjectInfo>> trashProperties;
 };
+
+std::vector<std::vector<glm::vec3>> asteroidPositions(3, std::vector<glm::vec3>(8, glm::vec3(0.f, 0.f, 0.f)));
 
 Textures textures;
 Planets planets;
+Laser laser;
 
 GLuint programDefault;
 GLuint programSun;
 GLuint programSprite;
 
+GLuint VAO, VBO;
 GLuint VAO_sprite, VBO_sprite;
+
 bool showSprite = false;
 
 Core::Shader_Loader shaderLoader;
@@ -86,15 +93,10 @@ Core::RenderContext trash2Context;
 Core::RenderContext asteroidContext;
 Core::RenderContext laserContext;
 
-Laser laser;
-
 glm::vec3 cameraPos = glm::vec3(20.f, 0, 0);
 glm::vec3 cameraDir = glm::vec3(-1.f, 0.f, 0.f);
-
 glm::vec3 spaceshipPos = glm::vec3(20.f, 0, 0);
 glm::vec3 spaceshipDir = glm::vec3(-1.f, 0.f, 0.f);
-
-GLuint VAO, VBO;
 
 float aspectRatio = 1.f;
 float exposition = 1.f;
@@ -106,12 +108,13 @@ double lastMouseY = 0.0;
 
 float cameraSide = 0.0f;
 float cameraUp = 0.0f;
-
 float spaceshipSide = 0.0f;
 float spaceshipUp = 0.0f;
 
 float lastTime = -1.f;
 float deltaTime = 0.f;
+
+float spaceshipRadius = 0.5f;
 
 void updateDeltaTime(float time) {
 	if (lastTime < 0) {
@@ -166,12 +169,12 @@ void drawObjectTexture(GLuint program,Core::RenderContext& context, TextureSet t
 	glm::mat4 viewProjectionMatrix = createPerspectiveMatrix() * createCameraMatrix();
 	glm::mat4 transformation = viewProjectionMatrix * modelMatrix;
 
-	glUniformMatrix4fv(glGetUniformLocation(programDefault, "transformation"), 1, GL_FALSE, (float*)&transformation);
-	glUniformMatrix4fv(glGetUniformLocation(programDefault, "modelMatrix"), 1, GL_FALSE, (float*)&modelMatrix);
-	glUniform1f(glGetUniformLocation(programDefault, "exposition"), exposition);
-	glUniform3f(glGetUniformLocation(programDefault, "cameraPos"), cameraPos.x, cameraPos.y, cameraPos.z);
-	glUniform3f(glGetUniformLocation(programDefault, "lightPos"), 0.0f, 0.0f, 0.0f);
-	glUniform3f(glGetUniformLocation(programDefault, "lightColor"), 1.0f, 1.0f, 1.0f);
+	glUniformMatrix4fv(glGetUniformLocation(program, "transformation"), 1, GL_FALSE, (float*)&transformation);
+	glUniformMatrix4fv(glGetUniformLocation(program, "modelMatrix"), 1, GL_FALSE, (float*)&modelMatrix);
+	glUniform1f(glGetUniformLocation(program, "exposition"), exposition);
+	glUniform3f(glGetUniformLocation(program, "cameraPos"), cameraPos.x, cameraPos.y, cameraPos.z);
+	glUniform3f(glGetUniformLocation(program, "lightPos"), 0.0f, 0.0f, 0.0f);
+	glUniform3f(glGetUniformLocation(program, "lightColor"), 1.0f, 1.0f, 1.0f);
 	Core::SetActiveTexture(textures.albedo, "albedoTexture", program, 0);
 	Core::SetActiveTexture(textures.normal, "normalTexture", program, 1);
 	Core::SetActiveTexture(textures.ao, "aoTexture", program, 2);
@@ -181,10 +184,11 @@ void drawObjectTexture(GLuint program,Core::RenderContext& context, TextureSet t
 
 }
 
-void drawTrash(float planetX, float planetZ, float time, float orbitRadius, glm::vec3 scalePlanet) {
+void drawTrash(float planetX, float planetZ, float time, float orbitRadius, glm::vec3 scalePlanet,std::string planetName) {
+	
 	float orbitSpeed = 1.5f;
-
 	int numberOfTrash = ceil(scalePlanet.r);
+	planets.trashProperties[planetName].clear();
 	for (int i = 1; i <= numberOfTrash; ++i) {
 		
 		float trashX1 = planetX + orbitRadius * cos(orbitSpeed * time + i * 100);
@@ -192,6 +196,13 @@ void drawTrash(float planetX, float planetZ, float time, float orbitRadius, glm:
 
 		float trashX2 = planetX + orbitRadius * cos(orbitSpeed * time - i * 50);
 		float trashZ2 = planetZ + orbitRadius * sin(orbitSpeed * time - i * 100);
+
+		glm::vec3 trashPos1(trashX1, 0.5f, trashZ1);
+		glm::vec3 trashPos2(trashX2, -0.5f, trashZ2);
+
+		// Dodaj informacje o œmieciach do mapy dla danej planety
+		planets.trashProperties[planetName].push_back({ trashPos1, (scalePlanet.x / 10.0f) * 0.4f });
+		planets.trashProperties[planetName].push_back({ trashPos2, (scalePlanet.x / 2.f) * 0.4f });
 
 		glm::mat4 modelMatrix1 = glm::translate(glm::vec3(trashX1, 0.5f, trashZ1)) *
 			glm::rotate(2.f * time, glm::vec3(0.0f, 1.0f, 0.0f)) *
@@ -213,7 +224,7 @@ void drawPlanet(Core::RenderContext& context, TextureSet textures, float planetO
 	float planetX = planetOrbitRadius * cos(planetOrbitSpeed * time);
 	float planetZ = planetOrbitRadius * sin(planetOrbitSpeed * time);
 	
-	planets.planetsProperties[planetName] = { glm::vec3(planetX,0.f,planetZ), scalePlanet.x};
+	planets.planetsProperties[planetName] = { glm::vec3(planetX,0.f,planetZ), scalePlanet.x * 0.1f };
 	glm::mat4 modelMatrix = glm::translate(glm::vec3(planetX, 0, planetZ)) * glm::scale(scalePlanet);
 	glm::mat4 viewProjectionMatrix = createPerspectiveMatrix() * createCameraMatrix();
 	glm::mat4 transformation = viewProjectionMatrix * modelMatrix;
@@ -235,7 +246,7 @@ void drawPlanet(Core::RenderContext& context, TextureSet textures, float planetO
 	//drawMoon(context, glm::vec3(0.8, 0.8, 0.8), planetX, planetZ, time, moonOrbitRadius);
 
 	// THRASH
-	drawTrash(planetX, planetZ, time, trashOrbitRadius,scalePlanet);
+	drawTrash(planetX, planetZ, time, trashOrbitRadius,scalePlanet,planetName);
 }
 
 void drawSun(Core::RenderContext& context, glm::mat4 modelMatrix,TextureSet textures) {
@@ -252,32 +263,6 @@ void drawSun(Core::RenderContext& context, glm::mat4 modelMatrix,TextureSet text
 
 }
 
-void initSprite()
-{
-	float vertices[] = {
-		0.0f, 1.0f, 0.0f, 1.0f,
-		1.0f, 0.0f, 1.0f, 0.0f,
-		0.0f, 0.0f, 0.0f, 0.0f,
-
-		0.0f, 1.0f, 0.0f, 1.0f,
-		1.0f, 1.0f, 1.0f, 1.0f,
-		1.0f, 0.0f, 1.0f, 0.0f
-	};
-
-	glGenVertexArrays(1, &VAO_sprite);
-	glGenBuffers(1, &VBO_sprite);
-
-	glBindVertexArray(VAO_sprite);
-
-	glBindBuffer(GL_ARRAY_BUFFER, VBO_sprite);
-	glBufferData(GL_ARRAY_BUFFER, sizeof(vertices), vertices, GL_STATIC_DRAW);
-
-	glBindVertexArray(VAO_sprite);
-	glEnableVertexAttribArray(0);
-	glVertexAttribPointer(0, 4, GL_FLOAT, GL_FALSE, 4 * sizeof(float), (void*)0);
-	glBindBuffer(GL_ARRAY_BUFFER, 0);
-	glBindVertexArray(0);
-}
 
 void drawSprite(GLuint textureID)
 {
@@ -314,17 +299,35 @@ void drawSprite(GLuint textureID)
 //	glUniformMatrix4fv(glGetUniformLocation(programDefault, "transformation"), 1, GL_FALSE, (float*)&transformation);
 //	Core::DrawContext(context);
 //}
-bool collisionDetected = false;
 
-void checkCollision(glm::vec3 object1Pos, float object1Radius) {
-	
+
+bool checkCollision(glm::vec3 object1Pos, float object1Radius) {
+	float distance;
+
 	for (const auto& pair : planets.planetsProperties) {
-		float distance = glm::length(object1Pos - pair.second.coordinates);
-		if (distance < (object1Radius + pair.second.orbit)) {
-			collisionDetected = true;
-			break;
+			distance = glm::length(object1Pos - pair.second.coordinates);
+			if (distance < (object1Radius + pair.second.orbit)) {
+				return true;
+			}
+		}
+	for (const auto& row : asteroidPositions) {
+		for (const auto& asteroidPos : row) {
+			distance = glm::length(object1Pos - asteroidPos);
+			if (distance < (object1Radius + 1.5f)) {
+				return true;
+			}
 		}
 	}
+	for (const auto& planetEntry : planets.trashProperties) {
+		const std::string& planetName = planetEntry.first;
+		for (const auto& trashInfo : planetEntry.second) {
+			distance = glm::length(object1Pos - trashInfo.coordinates);
+			if (distance < (object1Radius + trashInfo.orbit)) {
+				return true;
+			}
+		}
+	}
+	return false;
 }
 
 void renderScene(GLFWwindow* window)
@@ -338,11 +341,9 @@ void renderScene(GLFWwindow* window)
 
 	glUseProgram(programSun);
 
-	collisionDetected = false;
-
 	// S£OÑCE
 	glm::vec3 sunPosition = glm::vec3(0, 0, 0);
-	planets.planetsProperties["Sun"] = { sunPosition, 10.0f };
+	planets.planetsProperties["Sun"] = { sunPosition, 9.5f };
 	drawSun(sphereContext, glm::scale(glm::vec3(10.f)) * glm::translate(sunPosition), textures.sun);
 
 	glUseProgram(programDefault);
@@ -357,28 +358,36 @@ void renderScene(GLFWwindow* window)
 	drawPlanet(sphereContext, textures.planets.uran, 55.0f, 0.1f, time, glm::vec3(1.6f), 2.5, std::string("Uran"));
 	drawPlanet(sphereContext, textures.planets.neptune, 60.0f, 0.05f, time, glm::vec3(1.8f), 2.5, std::string("Neptun"));
 
-	glm::vec3 initialAsteroidPosition(0.f, -15.f, 0.f);
-	float spacing = 5.f;
+	glm::vec3 initialAsteroidPosition(0.f, -20.f, 0.f);
 	float asteroidXOffset = sin(time) * 2.0f;
+
+	std::default_random_engine generator; // Inicjalizacja generatora liczb losowych
+	std::uniform_real_distribution<float> distribution(-1.0f, 1.0f); // Zakres losowych wartoœci od -1.0 do 1.0
 
 	// W pêtli asteroidy
 	for (int row = 0; row < 3; ++row)
 	{
 		for (int col = 0; col < 8; ++col)
 		{
-			glm::vec3 position = initialAsteroidPosition + glm::vec3(col * spacing, 0.f, row * spacing);
+			glm::vec3 position = initialAsteroidPosition + glm::vec3(col * 10.f, 0.f, row * 10.f);
 			if (row % 2 == 1)
 			{
-				position.x += spacing * 0.5f;
+				position.x += 10.f * 0.5f;
 			}
 			position.x += asteroidXOffset;
+
+			// Dodaj losowoœæ do pozycji asteroidy
+			position.x += distribution(generator) * 5.f;
+			position.y += distribution(generator) * 5.f;
+			position.z += distribution(generator) * 5.f;
+			
+			asteroidPositions[row][col] = position;
+
 			transformation = glm::translate(glm::mat4(1.0f), position) *
 				glm::rotate(2.f * time, glm::vec3(0.0f, 1.0f, 0.0f)) *
 				glm::rotate(0.5f * time, glm::vec3(1.0f, 0.0f, 0.0f));
 
-			//checkCollision(spaceshipPos, 0.5f, position, 2.f);
-
-			drawObjectTexture(programDefault,asteroidContext, textures.asteroid, transformation);
+			drawObjectTexture(programDefault, asteroidContext, textures.asteroid, transformation);
 		}
 	}
 	//STATEK
@@ -406,6 +415,10 @@ void renderScene(GLFWwindow* window)
 			// Rysuj laser
 			glm::mat4 laserModelMatrix = glm::translate(laser.position) * glm::mat4_cast(laser.laserRotation) * glm::scale(glm::vec3(0.0005f));
 			drawObjectTexture(programDefault, laserContext, textures.laser, laserModelMatrix);
+			if(checkCollision(laser.position,0.5f))
+			{
+				laser.isActive = false;
+			}
 		}
 		else
 		{
@@ -485,6 +498,33 @@ void initTextures() {
 	textures.laser = loadTextureSet("./textures/spaceship/laser_albedo.jpg","./textures/spaceship/laser_normal.png","./textures/spaceship/laser_ao.jpg","./textures/spaceship/laser_roughness.jpg","./textures/spaceship/laser_metallic.jpg");
 }
 
+void initSprite()
+{
+	float vertices[] = {
+		0.0f, 1.0f, 0.0f, 1.0f,
+		1.0f, 0.0f, 1.0f, 0.0f,
+		0.0f, 0.0f, 0.0f, 0.0f,
+
+		0.0f, 1.0f, 0.0f, 1.0f,
+		1.0f, 1.0f, 1.0f, 1.0f,
+		1.0f, 0.0f, 1.0f, 0.0f
+	};
+
+	glGenVertexArrays(1, &VAO_sprite);
+	glGenBuffers(1, &VBO_sprite);
+
+	glBindVertexArray(VAO_sprite);
+
+	glBindBuffer(GL_ARRAY_BUFFER, VBO_sprite);
+	glBufferData(GL_ARRAY_BUFFER, sizeof(vertices), vertices, GL_STATIC_DRAW);
+
+	glBindVertexArray(VAO_sprite);
+	glEnableVertexAttribArray(0);
+	glVertexAttribPointer(0, 4, GL_FLOAT, GL_FALSE, 4 * sizeof(float), (void*)0);
+	glBindBuffer(GL_ARRAY_BUFFER, 0);
+	glBindVertexArray(0);
+}
+
 void init(GLFWwindow* window)
 {
 	glfwSetFramebufferSizeCallback(window, framebuffer_size_callback);
@@ -540,16 +580,10 @@ void processInput(GLFWwindow* window)
 		showSprite = false;
 	}
 
-	// SprawdŸ kolizjê po dodaniu wartoœci
-	checkCollision(newSpaceshipPos, 0.5f);
-
 	// Jeœli nie wykryto kolizji, zaktualizuj pozycjê statku
-	if (!collisionDetected) {
+	if (checkCollision(newSpaceshipPos, spaceshipRadius) == false) {
 		spaceshipPos = newSpaceshipPos;
 	}
-
-	// Zresetuj flagê kolizji
-	collisionDetected = false;
 
 	cameraPos = spaceshipPos - 1.5 * spaceshipDir + glm::vec3(0, 1, 0) * 0.5f;
 	cameraDir = spaceshipDir;
