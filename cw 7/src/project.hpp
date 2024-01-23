@@ -54,19 +54,30 @@ struct Laser {
 	const float duration = 0.5f;  // Ile leci laser
 	bool isActive;
 	glm::quat laserRotation;
-
 	Laser() : position(0.0f), direction(0.0f), startTime(0.0f), isActive(false), laserRotation(1.0f, 0.0f, 0.0f, 0.0f) {}
 };
-
 
 struct ObjectInfo {
 	glm::vec3 coordinates;
 	float orbit;
+	bool destroyed = false;
 };
 
 struct Planets { 
 	std::map<std::string, ObjectInfo> planetsProperties;
 	std::map<std::string, std::vector<ObjectInfo>> trashProperties;
+};
+
+
+std::map<std::string, std::map<int, bool>> trashDisplayInfoMap = {
+	{"Mercury", {{0, true}, {1, true}, {2, true}, {3, true}}},
+	{"Venus", {{0, true}, {1, true}, {2, true}, {3, true}}},
+	{"Earth", {{0, true}, {1, true}, {2, true}, {3, true}}},
+	{"Mars", {{0, true}, {1, true}, {2, true}, {3, true}}},
+	{"Jupiter", {{0, true}, {1, true}, {2, true}, {3, true}}},
+	{"Saturn", {{0, true}, {1, true}, {2, true}, {3, true}}},
+	{"Uran", {{0, true}, {1, true}, {2, true}, {3, true}}},
+	{"Neptun", {{0, true}, {1, true}, {2, true}, {3, true}}},
 };
 
 std::vector<std::vector<glm::vec3>> asteroidPositions(3, std::vector<glm::vec3>(8, glm::vec3(0.f, 0.f, 0.f)));
@@ -187,44 +198,54 @@ void drawObjectTexture(GLuint program,Core::RenderContext& context, TextureSet t
 void drawTrash(float planetX, float planetZ, float time, float orbitRadius, glm::vec3 scalePlanet,std::string planetName) {
 	
 	float orbitSpeed = 1.5f;
-	int numberOfTrash = ceil(scalePlanet.r);
+	int id=0;
+	const auto& trashProps = planets.trashProperties[planetName];
+
+	for (int i = 0; i < trashProps.size() && i < 4; ++i) {
+		if (trashProps[i].destroyed) {
+			trashDisplayInfoMap[planetName][i] = false;
+		}
+	}
+
 	planets.trashProperties[planetName].clear();
-	for (int i = 1; i <= numberOfTrash; ++i) {
-		
-		float trashX1 = planetX + orbitRadius * cos(orbitSpeed * time + i * 100);
-		float trashZ1 = planetZ + orbitRadius * sin(orbitSpeed * time + i * 50);
+	for (int i = 1; i <= 2; ++i) {
 
-		float trashX2 = planetX + orbitRadius * cos(orbitSpeed * time - i * 50);
-		float trashZ2 = planetZ + orbitRadius * sin(orbitSpeed * time - i * 100);
+		if (trashDisplayInfoMap[planetName][id])
+		{
+			float trashX1 = planetX + orbitRadius * cos(orbitSpeed * time + i * 100);
+			float trashZ1 = planetZ + orbitRadius * sin(orbitSpeed * time + i * 50);
+			glm::vec3 trashPos1(trashX1, 0.5f, trashZ1);
+			glm::mat4 modelMatrix1 = glm::translate(glm::vec3(trashX1, 0.5f, trashZ1)) *
+				glm::rotate(2.f * time, glm::vec3(0.0f, 1.0f, 0.0f)) *
+				glm::rotate(0.5f * time, glm::vec3(1.0f, 0.0f, 0.0f)) *
+				glm::scale(scalePlanet / 10.0f);
+			drawObjectTexture(programDefault, trash1Context, textures.trash1, modelMatrix1);
+			planets.trashProperties[planetName].push_back({ trashPos1, (scalePlanet.x / 10.0f) * 0.4f });
+		}
 
-		glm::vec3 trashPos1(trashX1, 0.5f, trashZ1);
-		glm::vec3 trashPos2(trashX2, -0.5f, trashZ2);
+		if (trashDisplayInfoMap[planetName][id + 1]) {
+			float trashX2 = planetX + orbitRadius * cos(orbitSpeed * time - i * 50);
+			float trashZ2 = planetZ + orbitRadius * sin(orbitSpeed * time - i * 100);
+			glm::vec3 trashPos2(trashX2, -0.5f, trashZ2);
+			glm::mat4 modelMatrix2 = glm::translate(glm::vec3(trashX2, -0.5f, trashZ2)) *
+				glm::rotate(2.f * time, glm::vec3(0.0f, 1.0f, 0.0f)) *
+				glm::rotate(0.5f * time, glm::vec3(1.0f, 0.0f, 0.0f)) *
+				glm::scale(scalePlanet / 2.f);
+			drawObjectTexture(programDefault, trash2Context, textures.trash2, modelMatrix2);
+			planets.trashProperties[planetName].push_back({ trashPos2, (scalePlanet.x / 2.f) * 0.4f });
+		}
 
-		// Dodaj informacje o œmieciach do mapy dla danej planety
-		planets.trashProperties[planetName].push_back({ trashPos1, (scalePlanet.x / 10.0f) * 0.4f });
-		planets.trashProperties[planetName].push_back({ trashPos2, (scalePlanet.x / 2.f) * 0.4f });
-
-		glm::mat4 modelMatrix1 = glm::translate(glm::vec3(trashX1, 0.5f, trashZ1)) *
-			glm::rotate(2.f * time, glm::vec3(0.0f, 1.0f, 0.0f)) *
-			glm::rotate(0.5f * time, glm::vec3(1.0f, 0.0f, 0.0f)) *
-			glm::scale(scalePlanet / 10.0f);
-
-		glm::mat4 modelMatrix2 = glm::translate(glm::vec3(trashX2, -0.5f, trashZ2)) *
-			glm::rotate(2.f * time, glm::vec3(0.0f, 1.0f, 0.0f)) *
-			glm::rotate(0.5f * time, glm::vec3(1.0f, 0.0f, 0.0f)) *
-			glm::scale(scalePlanet/ 2.f);
-
-		drawObjectTexture(programDefault,trash1Context, textures.trash1, modelMatrix1);
-		drawObjectTexture(programDefault,trash2Context, textures.trash2, modelMatrix2);
+		id=id+2;
 	}
 }
+
 
 
 void drawPlanet(Core::RenderContext& context, TextureSet textures, float planetOrbitRadius, float planetOrbitSpeed, float time, glm::vec3 scalePlanet, float trashOrbitRadius, std::string& planetName) {
 	float planetX = planetOrbitRadius * cos(planetOrbitSpeed * time);
 	float planetZ = planetOrbitRadius * sin(planetOrbitSpeed * time);
 	
-	planets.planetsProperties[planetName] = { glm::vec3(planetX,0.f,planetZ), scalePlanet.x * 0.1f };
+	planets.planetsProperties[planetName] = { glm::vec3(planetX,0.f,planetZ), trashOrbitRadius - 1.f };
 	glm::mat4 modelMatrix = glm::translate(glm::vec3(planetX, 0, planetZ)) * glm::scale(scalePlanet);
 	glm::mat4 viewProjectionMatrix = createPerspectiveMatrix() * createCameraMatrix();
 	glm::mat4 transformation = viewProjectionMatrix * modelMatrix;
@@ -318,11 +339,12 @@ bool checkCollision(glm::vec3 object1Pos, float object1Radius) {
 			}
 		}
 	}
-	for (const auto& planetEntry : planets.trashProperties) {
+	for ( auto& planetEntry : planets.trashProperties) {
 		const std::string& planetName = planetEntry.first;
-		for (const auto& trashInfo : planetEntry.second) {
+		for ( auto& trashInfo : planetEntry.second) {
 			distance = glm::length(object1Pos - trashInfo.coordinates);
 			if (distance < (object1Radius + trashInfo.orbit)) {
+				trashInfo.destroyed = true;
 				return true;
 			}
 		}
