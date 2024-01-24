@@ -53,9 +53,8 @@ struct Laser {
 	float startTime;
 	const float duration = 0.5f;  // Ile leci laser
 	bool isActive;
-	glm::quat laserRotation;
 
-	Laser() : position(0.0f), direction(0.0f), startTime(0.0f), isActive(false), laserRotation(1.0f, 0.0f, 0.0f, 0.0f) {}
+	Laser() : position(0.0f), direction(0.0f), startTime(0.0f), isActive(false) {}
 };
 
 
@@ -413,7 +412,7 @@ void renderScene(GLFWwindow* window)
 			laser.position += laser.direction * laserSpeed * deltaTime;
 
 			// Rysuj laser
-			glm::mat4 laserModelMatrix = glm::translate(laser.position) * glm::mat4_cast(laser.laserRotation) * glm::scale(glm::vec3(0.0005f));
+			glm::mat4 laserModelMatrix = glm::translate(laser.position) * glm::scale(glm::vec3(0.0003));
 			drawObjectTexture(programDefault, laserContext, textures.laser, laserModelMatrix);
 			if(checkCollision(laser.position,0.5f))
 			{
@@ -542,7 +541,7 @@ void init(GLFWwindow* window)
 	loadModelToContext("./models/trash1.dae", trash1Context);
 	loadModelToContext("./models/trash2.dae", trash2Context);
 	loadModelToContext("./models/asteroid.obj", asteroidContext);
-	loadModelToContext("./models/laser.obj", laserContext);
+	loadModelToContext("./models/laser.glb", laserContext);
 
 	initTextures();
 	initSprite();
@@ -620,7 +619,6 @@ void processInput(GLFWwindow* window)
 		laser.position = spaceshipPos;
 		laser.direction = spaceshipDir;
 		laser.startTime = glfwGetTime();
-		laser.laserRotation = glm::quat(glm::vec3(glm::radians(spaceshipUp), glm::radians(-spaceshipSide), 0.0f));
 	}
 
 }
