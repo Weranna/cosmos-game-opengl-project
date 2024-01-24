@@ -57,15 +57,27 @@ struct Laser {
 	Laser() : position(0.0f), direction(0.0f), startTime(0.0f), isActive(false) {}
 };
 
-
 struct ObjectInfo {
 	glm::vec3 coordinates;
 	float orbit;
+	bool destroyed = false;
 };
 
 struct Planets { 
 	std::map<std::string, ObjectInfo> planetsProperties;
 	std::map<std::string, std::vector<ObjectInfo>> trashProperties;
+};
+
+
+std::map<std::string, std::map<int, bool>> trashDisplayInfoMap = {
+	{"Mercury", {{0, true}, {1, true}, {2, true}, {3, true}}},
+	{"Venus", {{0, true}, {1, true}, {2, true}, {3, true}}},
+	{"Earth", {{0, true}, {1, true}, {2, true}, {3, true}}},
+	{"Mars", {{0, true}, {1, true}, {2, true}, {3, true}}},
+	{"Jupiter", {{0, true}, {1, true}, {2, true}, {3, true}}},
+	{"Saturn", {{0, true}, {1, true}, {2, true}, {3, true}}},
+	{"Uran", {{0, true}, {1, true}, {2, true}, {3, true}}},
+	{"Neptun", {{0, true}, {1, true}, {2, true}, {3, true}}},
 };
 
 std::vector<std::vector<glm::vec3>> asteroidPositions(3, std::vector<glm::vec3>(8, glm::vec3(0.f, 0.f, 0.f)));
@@ -94,7 +106,7 @@ Core::RenderContext laserContext;
 
 glm::vec3 cameraPos = glm::vec3(20.f, 0, 0);
 glm::vec3 cameraDir = glm::vec3(-1.f, 0.f, 0.f);
-glm::vec3 spaceshipPos = glm::vec3(20.f, 0, 0);
+glm::vec3 spaceshipPos = glm::vec3(40.f, 20.f, 0);
 glm::vec3 spaceshipDir = glm::vec3(-1.f, 0.f, 0.f);
 
 float aspectRatio = 1.f;
@@ -114,6 +126,8 @@ float lastTime = -1.f;
 float deltaTime = 0.f;
 
 float spaceshipRadius = 0.5f;
+int trashDestroyed=0;
+
 
 void updateDeltaTime(float time) {
 	if (lastTime < 0) {
@@ -186,44 +200,60 @@ void drawObjectTexture(GLuint program,Core::RenderContext& context, TextureSet t
 void drawTrash(float planetX, float planetZ, float time, float orbitRadius, glm::vec3 scalePlanet,std::string planetName) {
 	
 	float orbitSpeed = 1.5f;
-	int numberOfTrash = ceil(scalePlanet.r);
+	int id=0;
+	const auto& trashProps = planets.trashProperties[planetName];
+
+	for (int i = 0; i < trashProps.size() && i < 4; ++i) {
+		if (trashProps[i].destroyed && trashDisplayInfoMap[planetName][i]) {
+			trashDisplayInfoMap[planetName][i] = false;
+			trashDestroyed++;
+		}
+	}
+
 	planets.trashProperties[planetName].clear();
-	for (int i = 1; i <= numberOfTrash; ++i) {
-		
+
+	for (int i = 1; i <= 2; ++i) {
+
 		float trashX1 = planetX + orbitRadius * cos(orbitSpeed * time + i * 100);
 		float trashZ1 = planetZ + orbitRadius * sin(orbitSpeed * time + i * 50);
-
-		float trashX2 = planetX + orbitRadius * cos(orbitSpeed * time - i * 50);
-		float trashZ2 = planetZ + orbitRadius * sin(orbitSpeed * time - i * 100);
-
 		glm::vec3 trashPos1(trashX1, 0.5f, trashZ1);
-		glm::vec3 trashPos2(trashX2, -0.5f, trashZ2);
-
-		// Dodaj informacje o œmieciach do mapy dla danej planety
-		planets.trashProperties[planetName].push_back({ trashPos1, (scalePlanet.x / 10.0f) * 0.4f });
-		planets.trashProperties[planetName].push_back({ trashPos2, (scalePlanet.x / 2.f) * 0.4f });
-
 		glm::mat4 modelMatrix1 = glm::translate(glm::vec3(trashX1, 0.5f, trashZ1)) *
 			glm::rotate(2.f * time, glm::vec3(0.0f, 1.0f, 0.0f)) *
 			glm::rotate(0.5f * time, glm::vec3(1.0f, 0.0f, 0.0f)) *
-			glm::scale(scalePlanet / 10.0f);
+			glm::scale(glm::vec3(0.2f));
 
+		planets.trashProperties[planetName].push_back({ trashPos1, 0.08f});
+
+		float trashX2 = planetX + orbitRadius * cos(orbitSpeed * time - i * 50);
+		float trashZ2 = planetZ + orbitRadius * sin(orbitSpeed * time - i * 100);
+		glm::vec3 trashPos2(trashX2, -0.5f, trashZ2);
 		glm::mat4 modelMatrix2 = glm::translate(glm::vec3(trashX2, -0.5f, trashZ2)) *
 			glm::rotate(2.f * time, glm::vec3(0.0f, 1.0f, 0.0f)) *
 			glm::rotate(0.5f * time, glm::vec3(1.0f, 0.0f, 0.0f)) *
-			glm::scale(scalePlanet/ 2.f);
+			glm::scale(glm::vec3(0.45f));
 
-		drawObjectTexture(programDefault,trash1Context, textures.trash1, modelMatrix1);
-		drawObjectTexture(programDefault,trash2Context, textures.trash2, modelMatrix2);
+		planets.trashProperties[planetName].push_back({ trashPos2, (scalePlanet.x / 10.f) * 0.4f });
+
+		if (trashDisplayInfoMap[planetName][id])
+		{
+			drawObjectTexture(programDefault, trash1Context, textures.trash1, modelMatrix1);
+		}
+
+		if (trashDisplayInfoMap[planetName][id + 1]) {
+			drawObjectTexture(programDefault, trash2Context, textures.trash2, modelMatrix2);
+		}
+
+		id=id+2;
 	}
 }
+
 
 
 void drawPlanet(Core::RenderContext& context, TextureSet textures, float planetOrbitRadius, float planetOrbitSpeed, float time, glm::vec3 scalePlanet, float trashOrbitRadius, std::string& planetName) {
 	float planetX = planetOrbitRadius * cos(planetOrbitSpeed * time);
 	float planetZ = planetOrbitRadius * sin(planetOrbitSpeed * time);
 	
-	planets.planetsProperties[planetName] = { glm::vec3(planetX,0.f,planetZ), scalePlanet.x * 0.1f };
+	planets.planetsProperties[planetName] = { glm::vec3(planetX,0.f,planetZ), trashOrbitRadius - 1.f };
 	glm::mat4 modelMatrix = glm::translate(glm::vec3(planetX, 0, planetZ)) * glm::scale(scalePlanet);
 	glm::mat4 viewProjectionMatrix = createPerspectiveMatrix() * createCameraMatrix();
 	glm::mat4 transformation = viewProjectionMatrix * modelMatrix;
@@ -317,11 +347,13 @@ bool checkCollision(glm::vec3 object1Pos, float object1Radius) {
 			}
 		}
 	}
-	for (const auto& planetEntry : planets.trashProperties) {
+	for ( auto& planetEntry : planets.trashProperties) {
 		const std::string& planetName = planetEntry.first;
-		for (const auto& trashInfo : planetEntry.second) {
+		for ( auto& trashInfo : planetEntry.second) {
 			distance = glm::length(object1Pos - trashInfo.coordinates);
 			if (distance < (object1Radius + trashInfo.orbit)) {
+				trashInfo.destroyed = true;
+				if (trashDestroyed == 4) std::cout << "QUEST COMPLETED";
 				return true;
 			}
 		}
@@ -342,22 +374,22 @@ void renderScene(GLFWwindow* window)
 
 	// S£OÑCE
 	glm::vec3 sunPosition = glm::vec3(0, 0, 0);
-	planets.planetsProperties["Sun"] = { sunPosition, 9.5f };
-	drawSun(sphereContext, glm::scale(glm::vec3(10.f)) * glm::translate(sunPosition), textures.sun);
+	planets.planetsProperties["Sun"] = { sunPosition, 30.f };
+	drawSun(sphereContext, glm::scale(glm::vec3(30.f)) * glm::translate(sunPosition), textures.sun);
 
 	glUseProgram(programDefault);
 
 	// UK£AD S£ONECZNY - PLANETY (NA RAZIE BEZ KSIÊ¯YCA)
-	drawPlanet(sphereContext, textures.planets.mercury, 15.0f, 0.4f, time, glm::vec3(0.5),1, std::string("Mercury"));
-	drawPlanet(sphereContext, textures.planets.venus, 20.0f, 0.35f, time, glm::vec3(1.f),1.5, std::string("Wenus"));
-	drawPlanet(sphereContext, textures.planets.earth, 25.0f, 0.3f, time, glm::vec3(1.3f),2, std::string("Earth"));
-	drawPlanet(sphereContext, textures.planets.mars, 30.0f, 0.25f, time, glm::vec3(1.3f), 2, std::string("Mars"));
-	drawPlanet(sphereContext, textures.planets.jupiter, 40.0f, 0.2f, time, glm::vec3(2.5f), 3, std::string("Jupiter"));
-	drawPlanet(sphereContext, textures.planets.saturn, 50.0f, 0.15f, time, glm::vec3(2.2f), 3, std::string("Saturn"));
-	drawPlanet(sphereContext, textures.planets.uran, 55.0f, 0.1f, time, glm::vec3(1.6f), 2.5, std::string("Uran"));
-	drawPlanet(sphereContext, textures.planets.neptune, 60.0f, 0.05f, time, glm::vec3(1.8f), 2.5, std::string("Neptun"));
+	drawPlanet(sphereContext, textures.planets.mercury, 15.0f*3, 0.4f, time, glm::vec3(0.5*9),1*9, std::string("Mercury"));
+	drawPlanet(sphereContext, textures.planets.venus, 20.0f * 3, 0.35f, time, glm::vec3(1.f * 9),1.5 * 9, std::string("Wenus"));
+	drawPlanet(sphereContext, textures.planets.earth, 25.0f * 3, 0.3f, time, glm::vec3(1.3f * 9),2 * 9, std::string("Earth"));
+	drawPlanet(sphereContext, textures.planets.mars, 30.0f * 3, 0.25f, time, glm::vec3(1.3f * 9), 2 * 9, std::string("Mars"));
+	drawPlanet(sphereContext, textures.planets.jupiter, 40.0f * 3, 0.2f, time, glm::vec3(2.5f * 9), 3 * 9, std::string("Jupiter"));
+	drawPlanet(sphereContext, textures.planets.saturn, 50.0f * 3, 0.15f, time, glm::vec3(2.2f * 9), 3 * 9, std::string("Saturn"));
+	drawPlanet(sphereContext, textures.planets.uran, 55.0f * 3, 0.1f, time, glm::vec3(1.6f * 9), 2.5 * 9, std::string("Uran"));
+	drawPlanet(sphereContext, textures.planets.neptune, 60.0f * 3, 0.05f, time, glm::vec3(1.8f * 9), 2.5 * 9, std::string("Neptun"));
 
-	glm::vec3 initialAsteroidPosition(0.f, -20.f, 0.f);
+	glm::vec3 initialAsteroidPosition(0.f, -30.f, 0.f);
 	float asteroidXOffset = sin(time) * 2.0f;
 
 	std::default_random_engine generator; // Inicjalizacja generatora liczb losowych
@@ -408,7 +440,7 @@ void renderScene(GLFWwindow* window)
 
 		if (elapsedTime < laser.duration)
 		{
-			float laserSpeed = 25.0f;
+			float laserSpeed = 50.f;
 			laser.position += laser.direction * laserSpeed * deltaTime;
 
 			// Rysuj laser
@@ -556,7 +588,7 @@ void shutdown(GLFWwindow* window)
 void processInput(GLFWwindow* window)
 {
 	float angleSpeed = 0.05f * deltaTime * 10;
-	float moveSpeed = 0.3f * deltaTime * 60;
+	float moveSpeed = 0.6f * deltaTime * 60;
 	
 	// Kopiuj aktualn¹ pozycjê statku do nowej zmiennej
 	glm::vec3 newSpaceshipPos = spaceshipPos;
