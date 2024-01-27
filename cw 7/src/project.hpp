@@ -8,65 +8,13 @@
 #include "Shader_Loader.h"
 #include "Render_Utils.h"
 #include "Texture.h"
+#include "Structures.h"
 
-#include "Box.cpp"
 #include <assimp/Importer.hpp>
 #include <assimp/scene.h>
 #include <assimp/postprocess.h>
 #include <string>
 #include <random>
-
-// teraz o wiele wiêkszy porz¹dek ze zmiennymi
-struct TextureSet {
-	GLuint albedo;
-	GLuint normal;
-	GLuint ao;
-	GLuint roughness;
-	GLuint metallic;
-};
-
-struct PlanetTextures {
-	TextureSet mercury;
-	TextureSet venus;
-	TextureSet earth;
-	TextureSet mars;
-	TextureSet jupiter;
-	TextureSet saturn;
-	TextureSet uran;
-	TextureSet neptune;
-};
-
-struct Textures {
-	TextureSet sun;
-	TextureSet spaceship;
-	PlanetTextures planets;
-	TextureSet trash1;
-	TextureSet trash2;
-	TextureSet asteroid;
-	TextureSet laser;
-	TextureSet sprite;
-};
-
-struct Laser {
-	glm::vec3 position;
-	glm::vec3 direction;
-	float startTime;
-	const float duration = 0.5f;  // Ile leci laser
-	bool isActive;
-
-	Laser() : position(0.0f), direction(0.0f), startTime(0.0f), isActive(false) {}
-};
-
-struct ObjectInfo {
-	glm::vec3 coordinates;
-	float orbit;
-	bool destroyed = false;
-};
-
-struct Planets { 
-	std::map<std::string, ObjectInfo> planetsProperties;
-	std::map<std::string, std::vector<ObjectInfo>> trashProperties;
-};
 
 
 std::map<std::string, std::map<int, bool>> trashDisplayInfoMap = {
