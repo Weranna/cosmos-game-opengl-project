@@ -11,7 +11,6 @@
     </ProjectConfiguration>
   </ItemGroup>
   <ItemGroup>
-    <ClCompile Include="src\Box.cpp" />
     <ClCompile Include="src\Camera.cpp" />
     <ClCompile Include="src\main.cpp" />
     <ClCompile Include="src\Render_Utils.cpp" />
@@ -34,11 +33,14 @@
     <ClInclude Include="src\SOIL\stbi_DDS_aug.h" />
     <ClInclude Include="src\SOIL\stbi_DDS_aug_c.h" />
     <ClInclude Include="src\SOIL\stb_image_aug.h" />
+    <ClInclude Include="src\Structures.h" />
     <ClInclude Include="src\Texture.h" />
   </ItemGroup>
   <ItemGroup>
     <None Include="shaders\shader_default.frag" />
     <None Include="shaders\shader_default.vert" />
+    <None Include="shaders\shader_sprite.frag" />
+    <None Include="shaders\shader_sprite.vert" />
     <None Include="shaders\shader_sun.frag" />
     <None Include="shaders\shader_sun.vert" />
     <None Include="shader_depth.frag" />

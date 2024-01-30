@@ -27,9 +27,6 @@
     <ClCompile Include="src\Shader_Loader.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="src\Box.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
     <ClCompile Include="src\Camera.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
@@ -89,6 +86,9 @@
     <ClInclude Include="src\project.hpp">
       <Filter>Source Files</Filter>
     </ClInclude>
+    <ClInclude Include="src\Structures.h">
+      <Filter>Source Files</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <None Include="shaders\shader_default.frag">
@@ -103,10 +103,10 @@
     <None Include="shaders\shader_sun.vert">
       <Filter>Shader Files</Filter>
     </None>
-    <None Include="shader_depth.frag">
+    <None Include="shaders\shader_sprite.frag">
       <Filter>Shader Files</Filter>
     </None>
-    <None Include="shader_depth.vert">
+    <None Include="shaders\shader_sprite.vert">
       <Filter>Shader Files</Filter>
     </None>
   </ItemGroup>
