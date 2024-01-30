@@ -103,5 +103,11 @@
     <None Include="shaders\shader_sun.vert">
       <Filter>Shader Files</Filter>
     </None>
+    <None Include="shader_depth.frag">
+      <Filter>Shader Files</Filter>
+    </None>
+    <None Include="shader_depth.vert">
+      <Filter>Shader Files</Filter>
+    </None>
   </ItemGroup>
 </Project>
