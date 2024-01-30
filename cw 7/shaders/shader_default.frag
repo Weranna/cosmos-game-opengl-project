@@ -98,6 +98,7 @@ void main(){
     vec3 viewDir = normalize(viewDirTS);
 
     vec3 ambient = AMBIENT * texture(albedoTexture, vecTex).rgb * texture(aoTexture, vecTex).r;
+    //vec3 ambient = AMBIENT * texture(albedoTexture, vecTex).rgb;
     vec3 attenuatedlightColor = lightColor / pow(length(lightPos - worldPos), 2);
     vec3 ilumination;
     ilumination = ambient + PBRLight(lightDir, attenuatedlightColor, normal, viewDir);

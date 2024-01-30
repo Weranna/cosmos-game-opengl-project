@@ -225,10 +225,14 @@ void drawPlanet(Core::RenderContext& context, TextureSet textures, float planetO
 	drawTrash(planetX, planetZ, time, trashOrbitRadius,scalePlanet);
 }
 
+glm::vec3 sunDirection = glm::normalize(glm::vec3(1.0f, 1.0f, 1.0f)); // You can adjust the direction
 void drawSun(Core::RenderContext& context, glm::mat4 modelMatrix,TextureSet textures) {
 
 	glm::mat4 viewProjectionMatrix = createPerspectiveMatrix() * createCameraMatrix();
 	glm::mat4 transformation = viewProjectionMatrix * modelMatrix;
+	glUseProgram(programSun);
+
+	glUniform3f(glGetUniformLocation(programSun, "lightDir"), sunDirection.x, sunDirection.y, sunDirection.z);
 	glUniformMatrix4fv(glGetUniformLocation(programSun, "transformation"), 1, GL_FALSE, (float*)&transformation);
 	glUniformMatrix4fv(glGetUniformLocation(programSun, "modelMatrix"), 1, GL_FALSE, (float*)&modelMatrix);
 	glUniform3f(glGetUniformLocation(programSun, "cameraPos"), cameraPos.x, cameraPos.y, cameraPos.z);
