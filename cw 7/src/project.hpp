@@ -76,7 +76,6 @@ float deltaTime = 0.f;
 float spaceshipRadius = 0.5f;
 int trashDestroyed=0;
 
-
 void updateDeltaTime(float time) {
 	if (lastTime < 0) {
 		lastTime = time;
@@ -305,7 +304,7 @@ bool checkCollision(glm::vec3 object1Pos, float object1Radius) {
 			distance = glm::length(object1Pos - trashInfo.coordinates);
 			if (distance < (object1Radius + trashInfo.orbit)) {
 				trashInfo.destroyed = true;
-				if (trashDestroyed == 4) std::cout << "QUEST COMPLETED";
+				if (trashDestroyed == 10) std::cout << "QUEST COMPLETED";
 				return true;
 			}
 		}
@@ -333,13 +332,13 @@ void renderScene(GLFWwindow* window)
 
 	// UK£AD S£ONECZNY - PLANETY (NA RAZIE BEZ KSIÊ¯YCA)
 	drawPlanet(sphereContext, textures.planets.mercury, 15.0f*3, 0.4f, time, glm::vec3(0.5*9),1*9, std::string("Mercury"));
-	drawPlanet(sphereContext, textures.planets.venus, 20.0f * 3, 0.35f, time, glm::vec3(1.f * 9),1.5 * 9, std::string("Wenus"));
-	drawPlanet(sphereContext, textures.planets.earth, 25.0f * 3, 0.3f, time, glm::vec3(1.3f * 9),2 * 9, std::string("Earth"));
-	drawPlanet(sphereContext, textures.planets.mars, 30.0f * 3, 0.25f, time, glm::vec3(1.3f * 9), 2 * 9, std::string("Mars"));
-	drawPlanet(sphereContext, textures.planets.jupiter, 40.0f * 3, 0.2f, time, glm::vec3(2.5f * 9), 3 * 9, std::string("Jupiter"));
-	drawPlanet(sphereContext, textures.planets.saturn, 50.0f * 3, 0.15f, time, glm::vec3(2.2f * 9), 3 * 9, std::string("Saturn"));
-	drawPlanet(sphereContext, textures.planets.uran, 55.0f * 3, 0.1f, time, glm::vec3(1.6f * 9), 2.5 * 9, std::string("Uran"));
-	drawPlanet(sphereContext, textures.planets.neptune, 60.0f * 3, 0.05f, time, glm::vec3(1.8f * 9), 2.5 * 9, std::string("Neptun"));
+	drawPlanet(sphereContext, textures.planets.venus, 25.0f * 3, 0.35f, time, glm::vec3(1.f * 9),1.5 * 9, std::string("Wenus"));
+	drawPlanet(sphereContext, textures.planets.earth, 30.0f * 3, 0.3f, time, glm::vec3(1.3f * 9),2 * 9, std::string("Earth"));
+	drawPlanet(sphereContext, textures.planets.mars, 35.0f * 3, 0.25f, time, glm::vec3(1.3f * 9), 2 * 9, std::string("Mars"));
+	drawPlanet(sphereContext, textures.planets.jupiter, 45.0f * 3, 0.2f, time, glm::vec3(2.5f * 9), 3 * 9, std::string("Jupiter"));
+	drawPlanet(sphereContext, textures.planets.saturn, 55.0f * 3, 0.15f, time, glm::vec3(2.2f * 9), 3 * 9, std::string("Saturn"));
+	drawPlanet(sphereContext, textures.planets.uran, 60.0f * 3, 0.1f, time, glm::vec3(1.6f * 9), 2.5 * 9, std::string("Uran"));
+	drawPlanet(sphereContext, textures.planets.neptune, 65.0f * 3, 0.05f, time, glm::vec3(1.8f * 9), 2.5 * 9, std::string("Neptun"));
 
 	glm::vec3 initialAsteroidPosition(0.f, -30.f, 0.f);
 	float asteroidXOffset = sin(time) * 2.0f;
@@ -603,6 +602,7 @@ void processInput(GLFWwindow* window)
 		laser.position = spaceshipPos;
 		laser.direction = spaceshipDir;
 		laser.startTime = glfwGetTime();
+	
 	}
 
 }
