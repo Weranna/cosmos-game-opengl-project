@@ -6,6 +6,15 @@
 #include <map>
 #include <vector>
 
+struct Contexts {
+    Core::RenderContext shipContext;
+    Core::RenderContext sphereContext;
+    Core::RenderContext trash1Context;
+    Core::RenderContext trash2Context;
+    Core::RenderContext asteroidContext;
+    Core::RenderContext laserContext;
+};
+
 struct TextureSet {
     GLuint albedo;
     GLuint normal;
@@ -33,7 +42,6 @@ struct Textures {
     TextureSet trash2;
     TextureSet asteroid;
     TextureSet laser;
-    TextureSet sprite;
 };
 
 struct ObjectInfo {
@@ -55,4 +63,15 @@ struct Laser {
     bool isActive;
 
     Laser() : position(0.0f), direction(0.0f), startTime(0.0f), isActive(false) {}
+};
+
+struct TextureSprite {
+    GLuint sprite_1;
+    GLuint sprite_2;
+    GLuint sprite_3;
+    GLuint sprite_4;
+    GLuint sprite_5;
+    GLuint sprite_6;
+    GLuint sprite_7;
+    GLuint sprite_8;
 };

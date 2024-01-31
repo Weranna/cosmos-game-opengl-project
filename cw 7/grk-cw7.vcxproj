@@ -13,6 +13,7 @@
   <ItemGroup>
     <ClCompile Include="src\Camera.cpp" />
     <ClCompile Include="src\main.cpp" />
+    <ClCompile Include="src\Render_Sprite.cpp" />
     <ClCompile Include="src\Render_Utils.cpp" />
     <ClCompile Include="src\Shader_Loader.cpp" />
     <ClCompile Include="src\SOIL\image_DXT.c" />
@@ -25,6 +26,7 @@
     <ClInclude Include="src\Camera.h" />
     <ClInclude Include="src\project.hpp" />
     <ClInclude Include="src\objload.h" />
+    <ClInclude Include="src\Render_Sprite.h" />
     <ClInclude Include="src\Render_Utils.h" />
     <ClInclude Include="src\Shader_Loader.h" />
     <ClInclude Include="src\SOIL\image_DXT.h" />

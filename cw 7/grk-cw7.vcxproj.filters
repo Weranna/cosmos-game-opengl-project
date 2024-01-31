@@ -48,6 +48,9 @@
     <ClCompile Include="src\SOIL\image_helper.c">
       <Filter>Source Files\SOIL</Filter>
     </ClCompile>
+    <ClCompile Include="src\Render_Sprite.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="src\objload.h">
@@ -87,6 +90,9 @@
       <Filter>Source Files</Filter>
     </ClInclude>
     <ClInclude Include="src\Structures.h">
+      <Filter>Source Files</Filter>
+    </ClInclude>
+    <ClInclude Include="src\Render_Sprite.h">
       <Filter>Source Files</Filter>
     </ClInclude>
   </ItemGroup>
