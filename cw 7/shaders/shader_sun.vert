@@ -9,12 +9,12 @@ uniform mat4 modelMatrix;
 
 out vec2 vecTex;
 out vec3 vecNormal;
-out vec3 worldPos;
+out vec3 fragPos; // Position in world space
 
 void main()
 {
-    worldPos = (modelMatrix * vec4(vertexPosition, 1)).xyz;
-    vecNormal = normalize((modelMatrix * vec4(vertexNormal, 0)).xyz);
+    fragPos = (modelMatrix * vec4(vertexPosition, 1.0)).xyz;
+    vecNormal = normalize((modelMatrix * vec4(vertexNormal, 0.0)).xyz);
     vecTex = vec2(vertexTexCoord.x, vertexTexCoord.y);
     gl_Position = transformation * vec4(vertexPosition, 1.0);
 }

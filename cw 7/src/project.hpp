@@ -70,7 +70,6 @@ float deltaTime = 0.f;
 float spaceshipRadius = 0.5f;
 int trashDestroyed = 0;
 
-
 void updateDeltaTime(float time) {
 	if (lastTime < 0) {
 		lastTime = time;
@@ -220,10 +219,14 @@ void drawPlanet(Core::RenderContext& context, TextureSet textures, float planetO
 	drawTrash(planetX, planetZ, time, trashOrbitRadius,scalePlanet,planetName);
 }
 
+glm::vec3 sunDirection = glm::normalize(glm::vec3(1.0f, 1.0f, 1.0f)); // You can adjust the direction
 void drawSun(Core::RenderContext& context, glm::mat4 modelMatrix,TextureSet textures) {
 
 	glm::mat4 viewProjectionMatrix = createPerspectiveMatrix() * createCameraMatrix();
 	glm::mat4 transformation = viewProjectionMatrix * modelMatrix;
+	glUseProgram(programSun);
+
+	glUniform3f(glGetUniformLocation(programSun, "lightDir"), sunDirection.x, sunDirection.y, sunDirection.z);
 	glUniformMatrix4fv(glGetUniformLocation(programSun, "transformation"), 1, GL_FALSE, (float*)&transformation);
 	glUniformMatrix4fv(glGetUniformLocation(programSun, "modelMatrix"), 1, GL_FALSE, (float*)&modelMatrix);
 	glUniform3f(glGetUniformLocation(programSun, "cameraPos"), cameraPos.x, cameraPos.y, cameraPos.z);
@@ -257,7 +260,7 @@ bool checkCollision(glm::vec3 object1Pos, float object1Radius) {
 			distance = glm::length(object1Pos - trashInfo.coordinates);
 			if (distance < (object1Radius + trashInfo.orbit)) {
 				trashInfo.destroyed = true;
-				if (trashDestroyed == 4) std::cout << "QUEST COMPLETED";
+				if (trashDestroyed == 10) std::cout << "QUEST COMPLETED";
 				return true;
 			}
 		}
@@ -368,7 +371,7 @@ void renderScene(GLFWwindow* window)
 		renderSprite->DrawSprite(programSprite);
 	}
 
-	if (trashDestroyed == 2)
+	if (trashDestroyed == 10)
 	{
 		renderSprite->UpdateSprite(sprite_textures.sprite_2);
 	}
@@ -541,6 +544,7 @@ void processInput(GLFWwindow* window)
 		laser.position = spaceshipPos;
 		laser.direction = spaceshipDir;
 		laser.startTime = glfwGetTime();
+	
 	}
 
 }
