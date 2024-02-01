@@ -304,7 +304,7 @@ void renderScene(GLFWwindow* window)
 			glm::rotate(2.f * time, glm::vec3(0.0f, 1.0f, 0.0f)) *
 			glm::rotate(0.5f * time, glm::vec3(1.0f, 0.0f, 0.0f));
 
-		drawObjectTexture(programDefault, asteroidContext, textures.asteroid, transformation);
+		drawObjectTexture(programDefault, contexts.asteroidContext, textures.asteroid, transformation);
 
 		if (i==4) {
 			moveLeft = !moveLeft;
