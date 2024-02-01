@@ -16,7 +16,7 @@
 #include <assimp/postprocess.h>
 #include <string>
 #include <random>
-
+#include <cmath>
 
 std::map<std::string, std::map<int, bool>> trashDisplayInfoMap = {
 	{"Mercury", {{0, true}, {1, true}, {2, true}, {3, true}}},
@@ -30,9 +30,10 @@ std::map<std::string, std::map<int, bool>> trashDisplayInfoMap = {
 };
 
 std::vector<std::vector<glm::vec3>> asteroidPositions(3, std::vector<glm::vec3>(8, glm::vec3(0.f, 0.f, 0.f)));
+std::vector<glm::vec3> barierPositions;
 
 Textures textures;
-TextureSprite sprite_textures;
+TextureSprite sprites;
 Planets planets;
 Laser laser;
 Contexts contexts;
@@ -40,6 +41,8 @@ Contexts contexts;
 GLuint programDefault;
 GLuint programSun;
 GLuint programSprite;
+GLuint programSkybox;
+GLuint skyboxTexture;
 
 Core::Shader_Loader shaderLoader;
 Core::RenderSprite* renderSprite;
@@ -86,46 +89,9 @@ void updateDeltaTime(float time) {
 	lastTime = time;
 }
 
-glm::mat4 createCameraMatrix()
-{
-	glm::vec3 cameraSide = glm::normalize(glm::cross(cameraDir, glm::vec3(0.f, 1.f, 0.f)));
-	glm::vec3 cameraUp = glm::normalize(glm::cross(cameraSide, cameraDir));
-	glm::mat4 cameraRotrationMatrix = glm::mat4({
-		cameraSide.x,cameraSide.y,cameraSide.z,0,
-		cameraUp.x,cameraUp.y,cameraUp.z ,0,
-		-cameraDir.x,-cameraDir.y,-cameraDir.z,0,
-		0.,0.,0.,1.,
-		});
-	cameraRotrationMatrix = glm::transpose(cameraRotrationMatrix);
-	glm::mat4 cameraMatrix = cameraRotrationMatrix * glm::translate(-cameraPos);
-
-	return cameraMatrix;
-}
-
-glm::mat4 createPerspectiveMatrix()
-{
-
-	glm::mat4 perspectiveMatrix;
-	float n = 0.05;
-	float f = 100.f;
-	float a1 = glm::min(aspectRatio, 1.f);
-	float a2 = glm::min(1 / aspectRatio, 1.f);
-	perspectiveMatrix = glm::mat4({
-		1,0.,0.,0.,
-		0.,aspectRatio,0.,0.,
-		0.,0.,(f + n) / (n - f),2 * f * n / (n - f),
-		0.,0.,-1.,0.,
-		});
-
-
-	perspectiveMatrix = glm::transpose(perspectiveMatrix);
-
-	return perspectiveMatrix;
-}
-
 void drawObjectTexture(GLuint program,Core::RenderContext& context, TextureSet textures, glm::mat4 modelMatrix) {
 
-	glm::mat4 viewProjectionMatrix = createPerspectiveMatrix() * createCameraMatrix();
+	glm::mat4 viewProjectionMatrix = Core::createPerspectiveMatrix(aspectRatio) * Core::createCameraMatrix(cameraDir, cameraPos);
 	glm::mat4 transformation = viewProjectionMatrix * modelMatrix;
 
 	glUniformMatrix4fv(glGetUniformLocation(program, "transformation"), 1, GL_FALSE, (float*)&transformation);
@@ -145,7 +111,7 @@ void drawObjectTexture(GLuint program,Core::RenderContext& context, TextureSet t
 
 void drawTrash(float planetX, float planetZ, float time, float orbitRadius, glm::vec3 scalePlanet,std::string planetName) {
 	
-	float orbitSpeed = 1.5f;
+	float orbitSpeed = 1.f;
 	int id=0;
 	const auto& trashProps = planets.trashProperties[planetName];
 
@@ -166,9 +132,9 @@ void drawTrash(float planetX, float planetZ, float time, float orbitRadius, glm:
 		glm::mat4 modelMatrix1 = glm::translate(glm::vec3(trashX1, 0.5f, trashZ1)) *
 			glm::rotate(2.f * time, glm::vec3(0.0f, 1.0f, 0.0f)) *
 			glm::rotate(0.5f * time, glm::vec3(1.0f, 0.0f, 0.0f)) *
-			glm::scale(glm::vec3(0.2f));
+			glm::scale(glm::vec3(0.7f));
 
-		planets.trashProperties[planetName].push_back({ trashPos1, 0.08f});
+		planets.trashProperties[planetName].push_back({ trashPos1, 2.f});
 
 		float trashX2 = planetX + orbitRadius * cos(orbitSpeed * time - i * 50);
 		float trashZ2 = planetZ + orbitRadius * sin(orbitSpeed * time - i * 100);
@@ -176,9 +142,9 @@ void drawTrash(float planetX, float planetZ, float time, float orbitRadius, glm:
 		glm::mat4 modelMatrix2 = glm::translate(glm::vec3(trashX2, -0.5f, trashZ2)) *
 			glm::rotate(2.f * time, glm::vec3(0.0f, 1.0f, 0.0f)) *
 			glm::rotate(0.5f * time, glm::vec3(1.0f, 0.0f, 0.0f)) *
-			glm::scale(glm::vec3(0.45f));
+			glm::scale(glm::vec3(1.5f));
 
-		planets.trashProperties[planetName].push_back({ trashPos2, (scalePlanet.x / 10.f) * 0.4f });
+		planets.trashProperties[planetName].push_back({ trashPos2,  2.f });
 
 		if (trashDisplayInfoMap[planetName][id])
 		{
@@ -201,7 +167,7 @@ void drawPlanet(Core::RenderContext& context, TextureSet textures, float planetO
 	
 	planets.planetsProperties[planetName] = { glm::vec3(planetX,0.f,planetZ), trashOrbitRadius - 1.f };
 	glm::mat4 modelMatrix = glm::translate(glm::vec3(planetX, 0, planetZ)) * glm::scale(scalePlanet);
-	glm::mat4 viewProjectionMatrix = createPerspectiveMatrix() * createCameraMatrix();
+	glm::mat4 viewProjectionMatrix = Core::createPerspectiveMatrix(aspectRatio) * Core::createCameraMatrix(cameraDir, cameraPos);
 	glm::mat4 transformation = viewProjectionMatrix * modelMatrix;
 
 	glUniformMatrix4fv(glGetUniformLocation(programDefault, "transformation"), 1, GL_FALSE, (float*)&transformation);
@@ -221,9 +187,6 @@ void drawPlanet(Core::RenderContext& context, TextureSet textures, float planetO
 	Core::SetActiveTexture(textures.metallic, "metallicTexture", programDefault, 4);
 	Core::DrawContext(context);
 
-	// KSIÊ¯YC
-	//drawMoon(context, glm::vec3(0.8, 0.8, 0.8), planetX, planetZ, time, moonOrbitRadius);
-
 	// THRASH
 	drawTrash(planetX, planetZ, time, trashOrbitRadius,scalePlanet,planetName);
 }
@@ -231,7 +194,7 @@ void drawPlanet(Core::RenderContext& context, TextureSet textures, float planetO
 glm::vec3 sunDirection = glm::normalize(glm::vec3(1.0f, 1.0f, 1.0f)); // You can adjust the direction
 void drawSun(Core::RenderContext& context, glm::mat4 modelMatrix,TextureSet textures) {
 
-	glm::mat4 viewProjectionMatrix = createPerspectiveMatrix() * createCameraMatrix();
+	glm::mat4 viewProjectionMatrix = Core::createPerspectiveMatrix(aspectRatio) * Core::createCameraMatrix(cameraDir, cameraPos);
 	glm::mat4 transformation = viewProjectionMatrix * modelMatrix;
 	glUseProgram(programSun);
 
@@ -274,17 +237,24 @@ bool checkCollision(glm::vec3 object1Pos, float object1Radius) {
 			}
 		}
 	}
+	for (const auto& barierPos : barierPositions) {
+		distance = glm::length(object1Pos - barierPos);
+		if (distance < (object1Radius + 1.5f)) {
+			return true;
+		}
+	}
 	return false;
 }
 
 void renderScene(GLFWwindow* window)
 {
-	//GRANATOWE T£O
 	glClearColor(0.0f, 0.0f, 0.15f, 1.0f);
 	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 	glm::mat4 transformation;
 	float time = glfwGetTime();
 	updateDeltaTime(time);
+
+	Core::DrawSkybox(programSkybox, contexts.skyboxContext, skyboxTexture, cameraDir, cameraPos, aspectRatio);
 
 	glUseProgram(programSun);
 
@@ -299,17 +269,17 @@ void renderScene(GLFWwindow* window)
 
 
 	// UK£AD S£ONECZNY - PLANETY (NA RAZIE BEZ KSIÊ¯YCA)
-	drawPlanet(contexts.sphereContext, textures.planets.mercury, 15.0f*3, 0.4f, time, glm::vec3(0.5*9),1*9, std::string("Mercury"));
-	drawPlanet(contexts.sphereContext, textures.planets.venus, 20.0f * 3, 0.35f, time, glm::vec3(1.f * 9),1.5 * 9, std::string("Wenus"));
-	drawPlanet(contexts.sphereContext, textures.planets.earth, 25.0f * 3, 0.3f, time, glm::vec3(1.3f * 9),2 * 9, std::string("Earth"));
-	drawPlanet(contexts.sphereContext, textures.planets.mars, 30.0f * 3, 0.25f, time, glm::vec3(1.3f * 9), 2 * 9, std::string("Mars"));
-	drawPlanet(contexts.sphereContext, textures.planets.jupiter, 40.0f * 3, 0.2f, time, glm::vec3(2.5f * 9), 3 * 9, std::string("Jupiter"));
-	drawPlanet(contexts.sphereContext, textures.planets.saturn, 50.0f * 3, 0.15f, time, glm::vec3(2.2f * 9), 3 * 9, std::string("Saturn"));
-	drawPlanet(contexts.sphereContext, textures.planets.uran, 55.0f * 3, 0.1f, time, glm::vec3(1.6f * 9), 2.5 * 9, std::string("Uran"));
-	drawPlanet(contexts.sphereContext, textures.planets.neptune, 60.0f * 3, 0.05f, time, glm::vec3(1.8f * 9), 2.5 * 9, std::string("Neptun"));
+	drawPlanet(contexts.sphereContext, textures.planets.mercury, 15.0f*5, 0.2f, time, glm::vec3(0.5*9),1*9, std::string("Mercury"));
+	drawPlanet(contexts.sphereContext, textures.planets.venus, 20.0f * 5, 0.175f, time, glm::vec3(1.f * 9),1.5 * 9, std::string("Venus"));
+	drawPlanet(contexts.sphereContext, textures.planets.earth, 25.0f * 5, 0.15f, time, glm::vec3(1.3f * 9),2 * 9, std::string("Earth"));
+	drawPlanet(contexts.sphereContext, textures.planets.mars, 30.0f * 5, 0.125f, time, glm::vec3(1.3f * 9), 2 * 9, std::string("Mars"));
+	drawPlanet(contexts.sphereContext, textures.planets.jupiter, 40.0f * 5, 0.1f, time, glm::vec3(2.5f * 9), 3 * 9, std::string("Jupiter"));
+	drawPlanet(contexts.sphereContext, textures.planets.saturn, 50.0f * 5, 0.075f, time, glm::vec3(2.2f * 9), 3 * 9, std::string("Saturn"));
+	drawPlanet(contexts.sphereContext, textures.planets.uran, 55.0f * 5, 0.05f, time, glm::vec3(1.6f * 9), 2.5 * 9, std::string("Uran"));
+	drawPlanet(contexts.sphereContext, textures.planets.neptune, 60.0f * 5, 0.025f, time, glm::vec3(1.8f * 9), 2.5 * 9, std::string("Neptun"));
 
-	glm::vec3 initialAsteroidPosition(0.f, -30.f, 0.f);
-	float asteroidXOffset = sin(time) * 2.0f;
+	glm::vec3 initialAsteroidPosition(0.f, 40.f, 0.f);
+	float offset = sin(time) * 2.0f;
 
 	std::default_random_engine generator; // Inicjalizacja generatora liczb losowych
 	std::uniform_real_distribution<float> distribution(-1.0f, 1.0f); // Zakres losowych wartoœci od -1.0 do 1.0
@@ -324,7 +294,7 @@ void renderScene(GLFWwindow* window)
 			{
 				position.x += 10.f * 0.5f;
 			}
-			position.x += asteroidXOffset;
+			position.x += offset;
 
 			// Dodaj losowoœæ do pozycji asteroidy
 			position.x += distribution(generator) * 5.f;
@@ -340,6 +310,32 @@ void renderScene(GLFWwindow* window)
 			drawObjectTexture(programDefault, contexts.asteroidContext, textures.asteroid, transformation);
 		}
 	}
+	initialAsteroidPosition = glm::vec3(0.f, -40.f, 0.f);
+	bool moveLeft = true;
+	float offsetX = 0;
+	float offsetZ = 2.5f;
+	for (int i = 0; i < 10; ++i) {
+		offsetX = (moveLeft) ? -2.5f : 2.5f;
+
+		initialAsteroidPosition.x += offsetX;
+		initialAsteroidPosition.z += offsetZ;
+
+		transformation = glm::translate(glm::mat4(1.0f), initialAsteroidPosition) *
+			glm::rotate(0.5f * time, glm::vec3(0.0f, 1.0f, 0.0f)) *
+			glm::rotate(0.5f * time, glm::vec3(1.0f, 0.0f, 0.0f)) *
+			glm::rotate(0.5f * time, glm::vec3(0.0f, 0.0f, 1.0f));
+
+		if (i >= barierPositions.size()) {
+			barierPositions.push_back(initialAsteroidPosition);
+		}
+		else {
+			barierPositions[i] = initialAsteroidPosition;
+		}
+
+		drawObjectTexture(programDefault, contexts.asteroidContext, textures.asteroid, transformation);
+
+	}
+
 	//STATEK
 	glm::vec3 spaceshipSide = glm::normalize(glm::cross(spaceshipDir, glm::vec3(0.f, 1.f, 0.f)));
 	glm::vec3 spaceshipUp = glm::normalize(glm::cross(spaceshipSide, spaceshipDir));
@@ -372,7 +368,6 @@ void renderScene(GLFWwindow* window)
 		}
 		else
 		{
-			// Po czasie deaktywuj laser - znika
 			laser.isActive = false;
 		}
 	}
@@ -385,7 +380,7 @@ void renderScene(GLFWwindow* window)
 
 	if (trashDestroyed == 10)
 	{
-		renderSprite->UpdateSprite(sprite_textures.sprite_2);
+		renderSprite->UpdateSprite(sprites.sprite_2);
 	}
 
 	
@@ -430,8 +425,8 @@ TextureSet loadTextureSet(const std::string& albedoPath, const std::string& norm
 
 // funkcja do tekstur
 void initTextures() {
-	textures.sun.albedo = Core::LoadTexture("./textures/sun/sun_albedo.png");
-	textures.sun.normal = Core::LoadTexture("./textures/sun/sun_normal.png");
+	textures.sun.albedo = Core::LoadTexture("./textures/sun/sun_albedo.jpg");
+	textures.sun.normal = Core::LoadTexture("./textures/sun/sun_normal.jpg");
 
 	textures.spaceship.albedo = Core::LoadTexture("./textures/spaceship/spaceship_albedo.jpg");
 	textures.spaceship.normal = Core::LoadTexture("./textures/spaceship/spaceship_normal.jpg");
@@ -452,14 +447,24 @@ void initTextures() {
 	textures.asteroid = loadTextureSet("./textures/asteroid/asteroid_albedo.png", "./textures/asteroid/asteroid_normal.png", "./textures/planets/mars/mars_ao.jpg", "./textures/asteroid/asteroid_roughness.png", "./textures/asteroid/asteroid_metallic.png");
 	textures.laser = loadTextureSet("./textures/spaceship/laser_albedo.jpg","./textures/spaceship/laser_normal.png","./textures/spaceship/laser_ao.jpg","./textures/spaceship/laser_roughness.jpg","./textures/spaceship/laser_metallic.jpg");
 
-	sprite_textures.sprite_1 = Core::LoadTexture("./img/mission_board_1.png");
-	sprite_textures.sprite_2 = Core::LoadTexture("./img/mission_board_2.png");
-	sprite_textures.sprite_3 = Core::LoadTexture("./img/mission_board_3.png");
-	sprite_textures.sprite_4 = Core::LoadTexture("./img/mission_board_4.png");
-	sprite_textures.sprite_5 = Core::LoadTexture("./img/mission_board_5.png");
-	sprite_textures.sprite_6 = Core::LoadTexture("./img/mission_board_6.png");
-	sprite_textures.sprite_7 = Core::LoadTexture("./img/mission_board_7.png");
-	sprite_textures.sprite_8 = Core::LoadTexture("./img/mission_board_8.png");
+	sprites.sprite_1 = Core::LoadTexture("./img/mission_board_1.png");
+	sprites.sprite_2 = Core::LoadTexture("./img/mission_board_2.png");
+	sprites.sprite_3 = Core::LoadTexture("./img/mission_board_3.png");
+	sprites.sprite_4 = Core::LoadTexture("./img/mission_board_4.png");
+	sprites.sprite_5 = Core::LoadTexture("./img/mission_board_5.png");
+	sprites.sprite_6 = Core::LoadTexture("./img/mission_board_6.png");
+	sprites.sprite_7 = Core::LoadTexture("./img/mission_board_7.png");
+	sprites.sprite_8 = Core::LoadTexture("./img/mission_board_8.png");
+
+	std::string skyboxFilepaths[6] = {
+	"./textures/skybox/skybox_right.png",
+	"./textures/skybox/skybox_left.png",
+	"./textures/skybox/skybox_top.png",
+	"./textures/skybox/skybox_bot.png",
+	"./textures/skybox/skybox_front.png",
+	"./textures/skybox/skybox_back.png"
+	};
+	skyboxTexture = Core::LoadSkybox(skyboxFilepaths);
 }
 
 void init(GLFWwindow* window)
@@ -473,6 +478,7 @@ void init(GLFWwindow* window)
 	programDefault = shaderLoader.CreateProgram("shaders/shader_default.vert", "shaders/shader_default.frag");
 	programSun = shaderLoader.CreateProgram("shaders/shader_sun.vert", "shaders/shader_sun.frag");
 	programSprite = shaderLoader.CreateProgram("shaders/shader_sprite.vert", "shaders/shader_sprite.frag");
+	programSkybox = shaderLoader.CreateProgram("shaders/shader_skybox.vert", "shaders/shader_skybox.frag");
 
 	loadModelToContext("./models/sphere.obj", contexts.sphereContext);
 	loadModelToContext("./models/spaceship.fbx", contexts.shipContext);
@@ -480,16 +486,18 @@ void init(GLFWwindow* window)
 	loadModelToContext("./models/trash2.dae", contexts.trash2Context);
 	loadModelToContext("./models/asteroid.obj", contexts.asteroidContext);
 	loadModelToContext("./models/laser.glb", contexts.laserContext);
+	loadModelToContext("./models/cube.obj", contexts.skyboxContext);
 
 	initTextures();
 	renderSprite = new Core::RenderSprite();
-	renderSprite->UpdateSprite(sprite_textures.sprite_1);
+	renderSprite->UpdateSprite(sprites.sprite_1);
 }
 
 void shutdown(GLFWwindow* window)
 {
 	delete renderSprite;
 	shaderLoader.DeleteProgram(programDefault);
+	glDeleteTextures(1, &skyboxTexture);
 }
 
 //obsluga wejscia

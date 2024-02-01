@@ -7,6 +7,7 @@
 #include <assimp/Importer.hpp>
 #include <assimp/scene.h>
 #include <assimp/postprocess.h>
+#include <ext.hpp>
 
 
 
@@ -119,10 +120,64 @@ void Core::DrawContext(Core::RenderContext& context)
 
 	glBindVertexArray(context.vertexArray);
 	glDrawElements(
-		GL_TRIANGLES,      // mode
-		context.size,    // count
-		GL_UNSIGNED_INT,   // type
-		(void*)0           // element array buffer offset
+		GL_TRIANGLES,
+		context.size,
+		GL_UNSIGNED_INT,
+		(void*)0
 	);
 	glBindVertexArray(0);
+}
+
+void Core::DrawSkybox(GLuint program, Core::RenderContext& context, GLuint TextureID, glm::vec3 cameraDir, glm::vec3 cameraPos, float aspectRatio)
+{
+    glDisable(GL_DEPTH_TEST);
+
+    glUseProgram(program);
+
+    glm::mat4 viewMatrix = glm::mat4(glm::mat3(Core::createCameraMatrix(cameraDir, cameraPos)));
+    glm::mat4 skyboxTransformation = Core::createPerspectiveMatrix(aspectRatio) * viewMatrix;
+    glUniformMatrix4fv(glGetUniformLocation(program, "transformation"), 1, GL_FALSE, (float*)&skyboxTransformation);
+
+    glBindTexture(GL_TEXTURE_CUBE_MAP, TextureID);
+    Core::DrawContext(context);
+    glUseProgram(0);
+
+    glEnable(GL_DEPTH_TEST);
+}
+
+glm::mat4 Core::createCameraMatrix(glm::vec3 cameraDir, glm::vec3 cameraPos)
+{
+    glm::vec3 cameraSide = glm::normalize(glm::cross(cameraDir, glm::vec3(0.f, 1.f, 0.f)));
+    glm::vec3 cameraUp = glm::normalize(glm::cross(cameraSide, cameraDir));
+    glm::mat4 cameraRotrationMatrix = glm::mat4({
+        cameraSide.x,cameraSide.y,cameraSide.z,0,
+        cameraUp.x,cameraUp.y,cameraUp.z ,0,
+        -cameraDir.x,-cameraDir.y,-cameraDir.z,0,
+        0.,0.,0.,1.,
+        });
+    cameraRotrationMatrix = glm::transpose(cameraRotrationMatrix);
+    glm::mat4 cameraMatrix = cameraRotrationMatrix * glm::translate(-cameraPos);
+
+    return cameraMatrix;
+}
+
+glm::mat4 Core::createPerspectiveMatrix(float aspectRatio)
+{
+
+    glm::mat4 perspectiveMatrix;
+    float n = 0.05;
+    float f = 100.f;
+    float a1 = glm::min(aspectRatio, 1.f);
+    float a2 = glm::min(1 / aspectRatio, 1.f);
+    perspectiveMatrix = glm::mat4({
+        1,0.,0.,0.,
+        0.,aspectRatio,0.,0.,
+        0.,0.,(f + n) / (n - f),2 * f * n / (n - f),
+        0.,0.,-1.,0.,
+        });
+
+
+    perspectiveMatrix = glm::transpose(perspectiveMatrix);
+
+    return perspectiveMatrix;
 }
