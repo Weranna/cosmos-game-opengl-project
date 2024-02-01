@@ -53,6 +53,11 @@ glm::vec3 cameraDir = glm::vec3(-1.f, 0.f, 0.f);
 glm::vec3 spaceshipPos = glm::vec3(40.f, 20.f, 0);
 glm::vec3 spaceshipDir = glm::vec3(-1.f, 0.f, 0.f);
 
+glm::vec3 spotlightPos = glm::vec3(0, 0, 0);
+glm::vec3 spotlightConeDir = glm::vec3(0, 0, 0);
+glm::vec3 spotlightColor = glm::vec3(0.4, 0.4, 0.9) * 3;
+float spotlightPhi = 3.14 / 4;
+
 bool showSprite = false;
 
 float aspectRatio = 1.f;
@@ -172,6 +177,10 @@ void drawPlanet(Core::RenderContext& context, TextureSet textures, float planetO
 	glUniform3f(glGetUniformLocation(programDefault, "cameraPos"), cameraPos.x, cameraPos.y, cameraPos.z);
 	glUniform3f(glGetUniformLocation(programDefault, "lightPos"), 0.0f, 0.0f, 0.0f);
 	glUniform3f(glGetUniformLocation(programDefault, "lightColor"), 1.0f, 1.0f, 1.0f);
+	glUniform3f(glGetUniformLocation(programDefault, "spotlightPos"), spotlightPos.x, spotlightPos.y, spotlightPos.z);
+	glUniform3f(glGetUniformLocation(programDefault, "spotlightConeDir"), spotlightConeDir.x, spotlightConeDir.y, spotlightConeDir.z);
+	glUniform3f(glGetUniformLocation(programDefault, "spotlightColor"), spotlightColor.r, spotlightColor.g, spotlightColor.b);
+	glUniform1f(glGetUniformLocation(programDefault, "spotlightPhi"), spotlightPhi);
 	Core::SetActiveTexture(textures.albedo, "albedoTexture", programDefault, 0);
 	Core::SetActiveTexture(textures.normal, "normalTexture", programDefault, 1);
 	Core::SetActiveTexture(textures.ao, "aoTexture", programDefault, 2);
@@ -256,6 +265,9 @@ void renderScene(GLFWwindow* window)
 	drawSun(contexts.sphereContext, glm::scale(glm::vec3(30.f)) * glm::translate(sunPosition), textures.sun);
 
 	glUseProgram(programDefault);
+	
+	
+
 
 	// UK£AD S£ONECZNY - PLANETY (NA RAZIE BEZ KSIÊ¯YCA)
 	drawPlanet(contexts.sphereContext, textures.planets.mercury, 15.0f*5, 0.2f, time, glm::vec3(0.5*9),1*9, std::string("Mercury"));
@@ -526,6 +538,9 @@ void processInput(GLFWwindow* window)
 
 	cameraPos = spaceshipPos - 1.5 * spaceshipDir + glm::vec3(0, 1, 0) * 0.5f;
 	cameraDir = spaceshipDir;
+
+	spotlightPos = spaceshipPos + 0.2 * spaceshipDir;
+	spotlightConeDir = spaceshipDir;
 	
 	double mouseX, mouseY;
 	glfwGetCursorPos(window, &mouseX, &mouseY);
