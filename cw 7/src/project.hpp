@@ -16,7 +16,7 @@
 #include <assimp/postprocess.h>
 #include <string>
 #include <random>
-
+#include <cmath>
 
 std::map<std::string, std::map<int, bool>> trashDisplayInfoMap = {
 	{"Mercury", {{0, true}, {1, true}, {2, true}, {3, true}}},
@@ -259,8 +259,8 @@ void renderScene(GLFWwindow* window)
 	drawPlanet(contexts.sphereContext, textures.planets.uran, 55.0f * 3, 0.1f, time, glm::vec3(1.6f * 9), 2.5 * 9, std::string("Uran"));
 	drawPlanet(contexts.sphereContext, textures.planets.neptune, 60.0f * 3, 0.05f, time, glm::vec3(1.8f * 9), 2.5 * 9, std::string("Neptun"));
 
-	glm::vec3 initialAsteroidPosition(0.f, -30.f, 0.f);
-	float asteroidXOffset = sin(time) * 2.0f;
+	glm::vec3 initialAsteroidPosition(0.f, 40.f, 0.f);
+	float offset = sin(time) * 2.0f;
 
 	std::default_random_engine generator; // Inicjalizacja generatora liczb losowych
 	std::uniform_real_distribution<float> distribution(-1.0f, 1.0f); // Zakres losowych wartoœci od -1.0 do 1.0
@@ -275,7 +275,7 @@ void renderScene(GLFWwindow* window)
 			{
 				position.x += 10.f * 0.5f;
 			}
-			position.x += asteroidXOffset;
+			position.x += offset;
 
 			// Dodaj losowoœæ do pozycji asteroidy
 			position.x += distribution(generator) * 5.f;
@@ -291,6 +291,26 @@ void renderScene(GLFWwindow* window)
 			drawObjectTexture(programDefault, contexts.asteroidContext, textures.asteroid, transformation);
 		}
 	}
+	initialAsteroidPosition = glm::vec3(0.f, -40.f, 0.f);
+	bool moveLeft = true;
+	offset = 0;
+	for (int i = 0; i < 10; ++i) {
+		offset += (moveLeft) ? -2.f : 2.f;
+
+		initialAsteroidPosition.x += offset;
+		initialAsteroidPosition.z += 2.f;
+
+		transformation = glm::translate(glm::mat4(1.0f), initialAsteroidPosition) *
+			glm::rotate(2.f * time, glm::vec3(0.0f, 1.0f, 0.0f)) *
+			glm::rotate(0.5f * time, glm::vec3(1.0f, 0.0f, 0.0f));
+
+		drawObjectTexture(programDefault, asteroidContext, textures.asteroid, transformation);
+
+		if (i==4) {
+			moveLeft = !moveLeft;
+		}
+	}
+
 	//STATEK
 	glm::vec3 spaceshipSide = glm::normalize(glm::cross(spaceshipDir, glm::vec3(0.f, 1.f, 0.f)));
 	glm::vec3 spaceshipUp = glm::normalize(glm::cross(spaceshipSide, spaceshipDir));
