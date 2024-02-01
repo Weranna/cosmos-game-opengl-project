@@ -123,5 +123,6 @@
     <None Include="shaders\shader_skybox.vert">
       <Filter>Shader Files</Filter>
     </None>
+    <None Include="models\asteroid_barier.fbx" />
   </ItemGroup>
 </Project>

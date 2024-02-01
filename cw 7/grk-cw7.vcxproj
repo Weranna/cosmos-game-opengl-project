@@ -39,6 +39,7 @@
     <ClInclude Include="src\Texture.h" />
   </ItemGroup>
   <ItemGroup>
+    <None Include="models\asteroid_barier.fbx" />
     <None Include="shaders\shader_default.frag" />
     <None Include="shaders\shader_default.vert" />
     <None Include="shaders\shader_skybox.frag" />
