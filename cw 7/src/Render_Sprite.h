@@ -9,7 +9,7 @@ namespace Core {
     public:
         RenderSprite();
         ~RenderSprite();
-        void DrawSprite(GLuint program);
+        void DrawSprite(GLuint program, float width, float height);
         void UpdateSprite(GLuint newTextureID);
 
     private:

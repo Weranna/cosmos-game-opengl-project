@@ -11,11 +11,11 @@ Core::RenderSprite::~RenderSprite() {
     glDeleteBuffers(1, &this->VBO);
 }
 
-void Core::RenderSprite::DrawSprite(GLuint program) {
+void Core::RenderSprite::DrawSprite(GLuint program, float width, float height) {
     glm::mat4 projection = glm::ortho(0.0f, 1000.0f, 1000.0f, 0.0f, -1.0f, 1.0f);
     glm::mat4 model = glm::mat4(1.0f);
-    model = glm::translate(model, glm::vec3(500.0f - 752.0f / 2.0f, 500.0f - 624.0f / 2.0f, 0.0f));
-    model = glm::scale(model, glm::vec3(glm::vec2(752.0f, 624.0f), 1.0f));
+    model = glm::translate(model, glm::vec3(500.0f - width / 2.0f, 500.0f - height / 2.0f, 0.0f));
+    model = glm::scale(model, glm::vec3(glm::vec2(width, height), 1.0f));
 
     glUniformMatrix4fv(glGetUniformLocation(program, "projection"), 1, GL_FALSE, (float*)&projection);
     glUniformMatrix4fv(glGetUniformLocation(program, "model"), 1, GL_FALSE, (float*)&model);
