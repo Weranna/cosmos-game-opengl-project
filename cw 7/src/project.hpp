@@ -7,6 +7,7 @@
 
 #include "Shader_Loader.h"
 #include "Render_Utils.h"
+#include "Render_Sprite.h"
 #include "Texture.h"
 #include "Structures.h"
 
@@ -31,31 +32,24 @@ std::map<std::string, std::map<int, bool>> trashDisplayInfoMap = {
 std::vector<std::vector<glm::vec3>> asteroidPositions(3, std::vector<glm::vec3>(8, glm::vec3(0.f, 0.f, 0.f)));
 
 Textures textures;
+TextureSprite sprite_textures;
 Planets planets;
 Laser laser;
+Contexts contexts;
 
 GLuint programDefault;
 GLuint programSun;
 GLuint programSprite;
 
-GLuint VAO, VBO;
-GLuint VAO_sprite, VBO_sprite;
-
-bool showSprite = false;
-
 Core::Shader_Loader shaderLoader;
-
-Core::RenderContext shipContext;
-Core::RenderContext sphereContext;
-Core::RenderContext trash1Context;
-Core::RenderContext trash2Context;
-Core::RenderContext asteroidContext;
-Core::RenderContext laserContext;
+Core::RenderSprite* renderSprite;
 
 glm::vec3 cameraPos = glm::vec3(20.f, 0, 0);
 glm::vec3 cameraDir = glm::vec3(-1.f, 0.f, 0.f);
 glm::vec3 spaceshipPos = glm::vec3(40.f, 20.f, 0);
 glm::vec3 spaceshipDir = glm::vec3(-1.f, 0.f, 0.f);
+
+bool showSprite = false;
 
 float aspectRatio = 1.f;
 float exposition = 1.f;
@@ -74,7 +68,7 @@ float lastTime = -1.f;
 float deltaTime = 0.f;
 
 float spaceshipRadius = 0.5f;
-int trashDestroyed=0;
+int trashDestroyed = 0;
 
 void updateDeltaTime(float time) {
 	if (lastTime < 0) {
@@ -108,7 +102,7 @@ glm::mat4 createPerspectiveMatrix()
 
 	glm::mat4 perspectiveMatrix;
 	float n = 0.05;
-	float f = 20.;
+	float f = 100.f;
 	float a1 = glm::min(aspectRatio, 1.f);
 	float a2 = glm::min(1 / aspectRatio, 1.f);
 	perspectiveMatrix = glm::mat4({
@@ -183,11 +177,11 @@ void drawTrash(float planetX, float planetZ, float time, float orbitRadius, glm:
 
 		if (trashDisplayInfoMap[planetName][id])
 		{
-			drawObjectTexture(programDefault, trash1Context, textures.trash1, modelMatrix1);
+			drawObjectTexture(programDefault, contexts.trash1Context, textures.trash1, modelMatrix1);
 		}
 
 		if (trashDisplayInfoMap[planetName][id + 1]) {
-			drawObjectTexture(programDefault, trash2Context, textures.trash2, modelMatrix2);
+			drawObjectTexture(programDefault, contexts.trash2Context, textures.trash2, modelMatrix2);
 		}
 
 		id=id+2;
@@ -243,44 +237,6 @@ void drawSun(Core::RenderContext& context, glm::mat4 modelMatrix,TextureSet text
 
 }
 
-
-void drawSprite(GLuint textureID)
-{
-	glUseProgram(programSprite);
-
-	glm::mat4 projection = glm::ortho(0.0f, 1000.0f, 1000.0f, 0.0f, -1.0f, 1.0f);
-	glm::mat4 model = glm::mat4(1.0f);
-	model = glm::translate(model, glm::vec3(500.0f - 752.0f / 2.0f, 500.0f - 624.0f / 2.0f, 0.0f));
-	model = glm::scale(model, glm::vec3(glm::vec2(752.0f, 624.0f), 1.0f));
-
-	glUniformMatrix4fv(glGetUniformLocation(programSprite, "projection"), 1, GL_FALSE, (float*)&projection);
-	glUniformMatrix4fv(glGetUniformLocation(programSprite, "model"), 1, GL_FALSE, (float*)&model);
-
-	glActiveTexture(GL_TEXTURE0);
-	glBindTexture(GL_TEXTURE_2D, textureID);
-	GLuint textureLocation = glGetUniformLocation(programSprite, "spriteTexture");
-	glUniform1i(textureLocation, 0);
-
-	glBindVertexArray(VAO_sprite);
-	glDrawArrays(GL_TRIANGLES, 0, 6);
-	glBindVertexArray(0);
-
-	glUseProgram(0);
-}
-
-//void drawMoon(Core::RenderContext& context, glm::vec3 color, float planetX, float planetZ, float time, float moonOrbitRadius) {
-//	float moonOrbitSpeed = 1.5f;
-//	float moonX = planetX + moonOrbitRadius * cos(moonOrbitSpeed * time);
-//	float moonZ = planetZ + moonOrbitRadius * sin(moonOrbitSpeed * time);
-//	glm::mat4 modelMatrix = glm::translate(glm::vec3(moonX, 0, moonZ)) * glm::scale(glm::vec3(0.3, 0.3, 0.3));
-//	glm::mat4 viewProjectionMatrix = createPerspectiveMatrix() * createCameraMatrix();
-//	glm::mat4 transformation = viewProjectionMatrix * modelMatrix;
-//	glUniform3f(glGetUniformLocation(programDefault, "color"), color.x, color.y, color.z);
-//	glUniformMatrix4fv(glGetUniformLocation(programDefault, "transformation"), 1, GL_FALSE, (float*)&transformation);
-//	Core::DrawContext(context);
-//}
-
-
 bool checkCollision(glm::vec3 object1Pos, float object1Radius) {
 	float distance;
 
@@ -326,19 +282,19 @@ void renderScene(GLFWwindow* window)
 	// S£OÑCE
 	glm::vec3 sunPosition = glm::vec3(0, 0, 0);
 	planets.planetsProperties["Sun"] = { sunPosition, 30.f };
-	drawSun(sphereContext, glm::scale(glm::vec3(30.f)) * glm::translate(sunPosition), textures.sun);
+	drawSun(contexts.sphereContext, glm::scale(glm::vec3(30.f)) * glm::translate(sunPosition), textures.sun);
 
 	glUseProgram(programDefault);
 
 	// UK£AD S£ONECZNY - PLANETY (NA RAZIE BEZ KSIÊ¯YCA)
-	drawPlanet(sphereContext, textures.planets.mercury, 15.0f*3, 0.4f, time, glm::vec3(0.5*9),1*9, std::string("Mercury"));
-	drawPlanet(sphereContext, textures.planets.venus, 25.0f * 3, 0.35f, time, glm::vec3(1.f * 9),1.5 * 9, std::string("Wenus"));
-	drawPlanet(sphereContext, textures.planets.earth, 30.0f * 3, 0.3f, time, glm::vec3(1.3f * 9),2 * 9, std::string("Earth"));
-	drawPlanet(sphereContext, textures.planets.mars, 35.0f * 3, 0.25f, time, glm::vec3(1.3f * 9), 2 * 9, std::string("Mars"));
-	drawPlanet(sphereContext, textures.planets.jupiter, 45.0f * 3, 0.2f, time, glm::vec3(2.5f * 9), 3 * 9, std::string("Jupiter"));
-	drawPlanet(sphereContext, textures.planets.saturn, 55.0f * 3, 0.15f, time, glm::vec3(2.2f * 9), 3 * 9, std::string("Saturn"));
-	drawPlanet(sphereContext, textures.planets.uran, 60.0f * 3, 0.1f, time, glm::vec3(1.6f * 9), 2.5 * 9, std::string("Uran"));
-	drawPlanet(sphereContext, textures.planets.neptune, 65.0f * 3, 0.05f, time, glm::vec3(1.8f * 9), 2.5 * 9, std::string("Neptun"));
+	drawPlanet(contexts.sphereContext, textures.planets.mercury, 15.0f*3, 0.4f, time, glm::vec3(0.5*9),1*9, std::string("Mercury"));
+	drawPlanet(contexts.sphereContext, textures.planets.venus, 20.0f * 3, 0.35f, time, glm::vec3(1.f * 9),1.5 * 9, std::string("Wenus"));
+	drawPlanet(contexts.sphereContext, textures.planets.earth, 25.0f * 3, 0.3f, time, glm::vec3(1.3f * 9),2 * 9, std::string("Earth"));
+	drawPlanet(contexts.sphereContext, textures.planets.mars, 30.0f * 3, 0.25f, time, glm::vec3(1.3f * 9), 2 * 9, std::string("Mars"));
+	drawPlanet(contexts.sphereContext, textures.planets.jupiter, 40.0f * 3, 0.2f, time, glm::vec3(2.5f * 9), 3 * 9, std::string("Jupiter"));
+	drawPlanet(contexts.sphereContext, textures.planets.saturn, 50.0f * 3, 0.15f, time, glm::vec3(2.2f * 9), 3 * 9, std::string("Saturn"));
+	drawPlanet(contexts.sphereContext, textures.planets.uran, 55.0f * 3, 0.1f, time, glm::vec3(1.6f * 9), 2.5 * 9, std::string("Uran"));
+	drawPlanet(contexts.sphereContext, textures.planets.neptune, 60.0f * 3, 0.05f, time, glm::vec3(1.8f * 9), 2.5 * 9, std::string("Neptun"));
 
 	glm::vec3 initialAsteroidPosition(0.f, 40.f, 0.f);
 	float offset = sin(time) * 2.0f;
@@ -369,7 +325,7 @@ void renderScene(GLFWwindow* window)
 				glm::rotate(2.f * time, glm::vec3(0.0f, 1.0f, 0.0f)) *
 				glm::rotate(0.5f * time, glm::vec3(1.0f, 0.0f, 0.0f));
 
-			drawObjectTexture(programDefault, asteroidContext, textures.asteroid, transformation);
+			drawObjectTexture(programDefault, contexts.asteroidContext, textures.asteroid, transformation);
 		}
 	}
 	initialAsteroidPosition = glm::vec3(0.f, -40.f, 0.f);
@@ -401,7 +357,7 @@ void renderScene(GLFWwindow* window)
 		-spaceshipDir.x,-spaceshipDir.y,-spaceshipDir.z,0,
 		0.,0.,0.,1.,
 		});
-	drawObjectTexture(programDefault, shipContext, textures.spaceship, glm::translate(spaceshipPos) * spaceshipCameraRotationMatrix * glm::eulerAngleY(glm::pi<float>()) * glm::scale(glm::vec3(0.0004)));
+	drawObjectTexture(programDefault, contexts.shipContext, textures.spaceship, glm::translate(spaceshipPos) * spaceshipCameraRotationMatrix * glm::eulerAngleY(glm::pi<float>()) * glm::scale(glm::vec3(0.0004)));
 
 	// Czy wystrzelono laser
 	if (laser.isActive)
@@ -416,7 +372,7 @@ void renderScene(GLFWwindow* window)
 
 			// Rysuj laser
 			glm::mat4 laserModelMatrix = glm::translate(laser.position) * glm::scale(glm::vec3(0.0003));
-			drawObjectTexture(programDefault, laserContext, textures.laser, laserModelMatrix);
+			drawObjectTexture(programDefault, contexts.laserContext, textures.laser, laserModelMatrix);
 			if(checkCollision(laser.position,0.5f))
 			{
 				laser.isActive = false;
@@ -432,7 +388,12 @@ void renderScene(GLFWwindow* window)
 	if (showSprite)
 	{
 		glUseProgram(programSprite);
-		drawSprite(textures.sprite.albedo);
+		renderSprite->DrawSprite(programSprite);
+	}
+
+	if (trashDestroyed == 10)
+	{
+		renderSprite->UpdateSprite(sprite_textures.sprite_2);
 	}
 
 	glUseProgram(0);
@@ -475,8 +436,6 @@ TextureSet loadTextureSet(const std::string& albedoPath, const std::string& norm
 
 // funkcja do tekstur
 void initTextures() {
-	textures.sprite.albedo = Core::LoadTexture("./img/mission_board_1.png");
-
 	textures.sun.albedo = Core::LoadTexture("./textures/sun/sun_albedo.png");
 	textures.sun.normal = Core::LoadTexture("./textures/sun/sun_normal.png");
 
@@ -498,33 +457,15 @@ void initTextures() {
 	textures.trash2 = loadTextureSet("./textures/trash/trash2_albedo.jpg", "./textures/trash/trash2_normal.png", "./textures/trash/trash2_AO.jpg", "./textures/trash/trash2_roughness.jpg", "./textures/trash/trash2_metallic.jpg");
 	textures.asteroid = loadTextureSet("./textures/asteroid/asteroid_albedo.png", "./textures/asteroid/asteroid_normal.png", "./textures/planets/mars/mars_ao.jpg", "./textures/asteroid/asteroid_roughness.png", "./textures/asteroid/asteroid_metallic.png");
 	textures.laser = loadTextureSet("./textures/spaceship/laser_albedo.jpg","./textures/spaceship/laser_normal.png","./textures/spaceship/laser_ao.jpg","./textures/spaceship/laser_roughness.jpg","./textures/spaceship/laser_metallic.jpg");
-}
 
-void initSprite()
-{
-	float vertices[] = {
-		0.0f, 1.0f, 0.0f, 1.0f,
-		1.0f, 0.0f, 1.0f, 0.0f,
-		0.0f, 0.0f, 0.0f, 0.0f,
-
-		0.0f, 1.0f, 0.0f, 1.0f,
-		1.0f, 1.0f, 1.0f, 1.0f,
-		1.0f, 0.0f, 1.0f, 0.0f
-	};
-
-	glGenVertexArrays(1, &VAO_sprite);
-	glGenBuffers(1, &VBO_sprite);
-
-	glBindVertexArray(VAO_sprite);
-
-	glBindBuffer(GL_ARRAY_BUFFER, VBO_sprite);
-	glBufferData(GL_ARRAY_BUFFER, sizeof(vertices), vertices, GL_STATIC_DRAW);
-
-	glBindVertexArray(VAO_sprite);
-	glEnableVertexAttribArray(0);
-	glVertexAttribPointer(0, 4, GL_FLOAT, GL_FALSE, 4 * sizeof(float), (void*)0);
-	glBindBuffer(GL_ARRAY_BUFFER, 0);
-	glBindVertexArray(0);
+	sprite_textures.sprite_1 = Core::LoadTexture("./img/mission_board_1.png");
+	sprite_textures.sprite_2 = Core::LoadTexture("./img/mission_board_2.png");
+	sprite_textures.sprite_3 = Core::LoadTexture("./img/mission_board_3.png");
+	sprite_textures.sprite_4 = Core::LoadTexture("./img/mission_board_4.png");
+	sprite_textures.sprite_5 = Core::LoadTexture("./img/mission_board_5.png");
+	sprite_textures.sprite_6 = Core::LoadTexture("./img/mission_board_6.png");
+	sprite_textures.sprite_7 = Core::LoadTexture("./img/mission_board_7.png");
+	sprite_textures.sprite_8 = Core::LoadTexture("./img/mission_board_8.png");
 }
 
 void init(GLFWwindow* window)
@@ -539,19 +480,21 @@ void init(GLFWwindow* window)
 	programSun = shaderLoader.CreateProgram("shaders/shader_sun.vert", "shaders/shader_sun.frag");
 	programSprite = shaderLoader.CreateProgram("shaders/shader_sprite.vert", "shaders/shader_sprite.frag");
 
-	loadModelToContext("./models/sphere.obj", sphereContext);
-	loadModelToContext("./models/spaceship.fbx", shipContext);
-	loadModelToContext("./models/trash1.dae", trash1Context);
-	loadModelToContext("./models/trash2.dae", trash2Context);
-	loadModelToContext("./models/asteroid.obj", asteroidContext);
-	loadModelToContext("./models/laser.glb", laserContext);
+	loadModelToContext("./models/sphere.obj", contexts.sphereContext);
+	loadModelToContext("./models/spaceship.fbx", contexts.shipContext);
+	loadModelToContext("./models/trash1.dae", contexts.trash1Context);
+	loadModelToContext("./models/trash2.dae", contexts.trash2Context);
+	loadModelToContext("./models/asteroid.obj", contexts.asteroidContext);
+	loadModelToContext("./models/laser.glb", contexts.laserContext);
 
 	initTextures();
-	initSprite();
+	renderSprite = new Core::RenderSprite();
+	renderSprite->UpdateSprite(sprite_textures.sprite_1);
 }
 
 void shutdown(GLFWwindow* window)
 {
+	delete renderSprite;
 	shaderLoader.DeleteProgram(programDefault);
 }
 
@@ -573,7 +516,7 @@ void processInput(GLFWwindow* window)
 		newSpaceshipPos += spaceshipDir * moveSpeed;
 	if (glfwGetKey(window, GLFW_KEY_S) == GLFW_PRESS)
 		newSpaceshipPos -= spaceshipDir * moveSpeed;
-	if (glfwGetKey(window, GLFW_KEY_TAB) == GLFW_PRESS)		// M pokazuje tablice z misjami
+	if (glfwGetKey(window, GLFW_KEY_TAB) == GLFW_PRESS)
 	{
 		showSprite = true;
 	}
@@ -617,7 +560,6 @@ void processInput(GLFWwindow* window)
 
 	if (glfwGetKey(window, GLFW_KEY_SPACE) == GLFW_PRESS && !laser.isActive)
 	{
-		// wystrzel laser po spacji
 		laser.isActive = true;
 		laser.position = spaceshipPos;
 		laser.direction = spaceshipDir;
@@ -627,7 +569,6 @@ void processInput(GLFWwindow* window)
 
 }
 
-// funkcja jest glowna petla
 void renderLoop(GLFWwindow* window) {
 	while (!glfwWindowShouldClose(window))
 	{
