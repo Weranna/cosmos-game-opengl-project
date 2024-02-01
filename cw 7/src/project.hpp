@@ -46,6 +46,7 @@ GLuint skyboxTexture;
 
 Core::Shader_Loader shaderLoader;
 Core::RenderSprite* renderSprite;
+Core::RenderSprite* renderSpriteEnd;
 
 glm::vec3 cameraPos = glm::vec3(20.f, 0, 0);
 glm::vec3 cameraDir = glm::vec3(-1.f, 0.f, 0.f);
@@ -369,8 +370,9 @@ void renderScene(GLFWwindow* window)
 	if (trashDestroyed == 10)
 	{
 		renderSprite->UpdateSprite(sprites.sprite_2);
+		glUseProgram(programSprite);
+		renderSpriteEnd->DrawSprite(programSprite);
 	}
-
 	glUseProgram(0);
 	glfwSwapBuffers(window);
 }
@@ -441,6 +443,7 @@ void initTextures() {
 	sprites.sprite_6 = Core::LoadTexture("./img/mission_board_6.png");
 	sprites.sprite_7 = Core::LoadTexture("./img/mission_board_7.png");
 	sprites.sprite_8 = Core::LoadTexture("./img/mission_board_8.png");
+	sprites.sprite_end = Core::LoadTexture("./img/mission_board_end.png");
 
 	std::string skyboxFilepaths[6] = {
 	"./textures/skybox/skybox_right.png",
@@ -476,12 +479,15 @@ void init(GLFWwindow* window)
 
 	initTextures();
 	renderSprite = new Core::RenderSprite();
+	renderSpriteEnd = new Core::RenderSprite();
 	renderSprite->UpdateSprite(sprites.sprite_1);
+	renderSpriteEnd->UpdateSprite(sprites.sprite_end);
 }
 
 void shutdown(GLFWwindow* window)
 {
 	delete renderSprite;
+	delete renderSpriteEnd;
 	shaderLoader.DeleteProgram(programDefault);
 	glDeleteTextures(1, &skyboxTexture);
 }
