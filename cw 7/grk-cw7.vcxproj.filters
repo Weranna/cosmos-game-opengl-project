@@ -115,5 +115,13 @@
     <None Include="shaders\shader_sprite.vert">
       <Filter>Shader Files</Filter>
     </None>
+    <None Include="shader_depth.frag" />
+    <None Include="shader_depth.vert" />
+    <None Include="shaders\shader_skybox.frag">
+      <Filter>Shader Files</Filter>
+    </None>
+    <None Include="shaders\shader_skybox.vert">
+      <Filter>Shader Files</Filter>
+    </None>
   </ItemGroup>
 </Project>

@@ -13,6 +13,7 @@ struct Contexts {
     Core::RenderContext trash2Context;
     Core::RenderContext asteroidContext;
     Core::RenderContext laserContext;
+    Core::RenderContext skyboxContext;
 };
 
 struct TextureSet {
