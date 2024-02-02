@@ -304,9 +304,9 @@ void renderScene(GLFWwindow* window)
 		}
 	}
 	// tor wyœcigowy
-	transformation = glm::translate(glm::vec3(0.f, -60.f, 0.f))*glm::scale( glm::vec3(50.f))* glm::rotate(glm::radians(90.0f), glm::vec3(1.0f, 0.f, 0.0f));
+	transformation = glm::translate(glm::vec3(0.f, -50.f, 0.f))*glm::scale( glm::vec3(50.f))* glm::rotate(glm::radians(270.f), glm::vec3(1.0f, 0.f, 0.0f));
 	drawObjectTexture(programDefault, contexts.barierContext, textures.barier, transformation);
-	transformation = glm::translate(glm::vec3(0.f, -60.f, 0.f)) * glm::scale(glm::vec3(70.f)) * glm::rotate(glm::radians(90.0f), glm::vec3(1.0f, 0.f, 0.0f));
+	transformation = glm::translate(glm::vec3(0.f, -50.f, 0.f)) * glm::scale(glm::vec3(70.f)) * glm::rotate(glm::radians(270.f), glm::vec3(1.0f, 0.f, 0.0f));
 	drawObjectTexture(programDefault, contexts.barierContext, textures.barier, transformation);
 
 	//STATEK
@@ -407,7 +407,7 @@ void initTextures() {
 	textures.trash1 = loadTextureSet("./textures/trash/trash1_albedo.jpg", "./textures/trash/trash1_normal.png", "./textures/trash/trash1_AO.jpg", "./textures/trash/trash1_roughness.jpg", "./textures/trash/trash1_metallic.jpg");
 	textures.trash2 = loadTextureSet("./textures/trash/trash2_albedo.jpg", "./textures/trash/trash2_normal.png", "./textures/trash/trash2_AO.jpg", "./textures/trash/trash2_roughness.jpg", "./textures/trash/trash2_metallic.jpg");
 	textures.asteroid = loadTextureSet("./textures/asteroid/asteroid_albedo.png", "./textures/asteroid/asteroid_normal.png", "./textures/planets/mars/mars_ao.jpg", "./textures/asteroid/asteroid_roughness.png", "./textures/asteroid/asteroid_metallic.png");
-	textures.barier = loadTextureSet("./textures/barier/barier_albedo.jpeg", "./textures/barier/barier_normal.jpeg", "./textures/planets/barier/barier_ao.jpeg", "./textures/barier/barier_roughness.jpeg", "./textures/barier/barier_metallic.jpeg");
+	textures.barier = loadTextureSet("./textures/barier/barier_albedo.jpeg", "./textures/barier/barier_normal.png", "./textures/planets/barier/barier_ao.png", "./textures/barier/barier_roughness.jpeg", "./textures/barier/barier_metallic.png");
 	textures.laser = loadTextureSet("./textures/spaceship/laser_albedo.jpg","./textures/spaceship/laser_normal.png","./textures/spaceship/laser_ao.jpg","./textures/spaceship/laser_roughness.jpg","./textures/spaceship/laser_metallic.jpg");
 
 	sprites.sprite_1 = Core::LoadTexture("./img/mission_board_1.png");
