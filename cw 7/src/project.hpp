@@ -258,6 +258,7 @@ void renderScene(GLFWwindow* window)
 	updateDeltaTime(time);
 
 	Core::DrawSkybox(programSkybox, contexts.skyboxContext, skyboxTexture, cameraDir, cameraPos, aspectRatio);
+	glClear(GL_DEPTH_BUFFER_BIT);
 
 	glUseProgram(programSun);
 
