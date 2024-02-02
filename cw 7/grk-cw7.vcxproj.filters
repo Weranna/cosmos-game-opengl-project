@@ -124,5 +124,6 @@
       <Filter>Shader Files</Filter>
     </None>
     <None Include="models\asteroid_barier.fbx" />
+    <None Include="models\barier.fbx" />
   </ItemGroup>
 </Project>
