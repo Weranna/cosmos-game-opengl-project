@@ -60,6 +60,7 @@ float spotlightPhi = 3.14 / 4;
 
 bool showMissions = false;
 bool hideInstruction = false;
+bool missionsComplete = false;
 
 float aspectRatio = 1.f;
 float exposition = 1.f;
@@ -251,6 +252,7 @@ void renderScene(GLFWwindow* window)
 	updateDeltaTime(time);
 
 	Core::DrawSkybox(programSkybox, contexts.skyboxContext, skyboxTexture, cameraDir, cameraPos, aspectRatio);
+	glClear(GL_DEPTH_BUFFER_BIT);
 
 	glUseProgram(programSun);
 
@@ -360,6 +362,10 @@ void renderScene(GLFWwindow* window)
 	if (trashDestroyed == 10)
 	{
 		renderSprite->UpdateSprite(sprites.sprite_2);
+		missionsComplete = true;
+	}
+	if (missionsComplete)
+	{
 		glUseProgram(programSprite);
 		renderSpriteEnd->DrawSprite(programSprite, 740.0f, 580.0f);
 	}
@@ -414,10 +420,6 @@ void initTextures() {
 	sprites.sprite_2 = Core::LoadTexture("./img/mission_board_2.png");
 	sprites.sprite_3 = Core::LoadTexture("./img/mission_board_3.png");
 	sprites.sprite_4 = Core::LoadTexture("./img/mission_board_4.png");
-	sprites.sprite_5 = Core::LoadTexture("./img/mission_board_5.png");
-	sprites.sprite_6 = Core::LoadTexture("./img/mission_board_6.png");
-	sprites.sprite_7 = Core::LoadTexture("./img/mission_board_7.png");
-	sprites.sprite_8 = Core::LoadTexture("./img/mission_board_8.png");
 	sprites.sprite_end = Core::LoadTexture("./img/mission_board_end.png");
 	sprites.sprite_start = Core::LoadTexture("./img/instruction.png");
 
