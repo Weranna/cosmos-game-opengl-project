@@ -22,8 +22,10 @@ int main(int argc, char** argv)
 	glfwWindowHint(GLFW_OPENGL_FORWARD_COMPAT, GL_TRUE);
 #endif
 
-	// tworzenie okna za pomoca glfw
-	GLFWwindow* window = glfwCreateWindow(1000, 1000, "Cosmos Game", NULL, NULL);
+	GLFWmonitor* primaryMonitor = glfwGetPrimaryMonitor();
+	const GLFWvidmode* mode = glfwGetVideoMode(primaryMonitor);
+
+	GLFWwindow* window = glfwCreateWindow(mode->width, mode->height, "Cosmos Game", primaryMonitor, NULL);
 	if (window == NULL)
 	{
 		std::cout << "Failed to create GLFW window" << std::endl;
@@ -34,7 +36,7 @@ int main(int argc, char** argv)
 
 	// ladowanie OpenGL za pomoca glew
 	glewInit();
-	glViewport(0, 0, 1000, 1000);
+	glViewport(0, 0, mode->width, mode->height);
 
 	init(window);
 

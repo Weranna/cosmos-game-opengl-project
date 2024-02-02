@@ -73,10 +73,6 @@ struct TextureSprite {
     GLuint sprite_2;
     GLuint sprite_3;
     GLuint sprite_4;
-    GLuint sprite_5;
-    GLuint sprite_6;
-    GLuint sprite_7;
-    GLuint sprite_8;
     GLuint sprite_end;
     GLuint sprite_start;
 };

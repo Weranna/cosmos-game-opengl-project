@@ -1,6 +1,7 @@
 #include <iostream>
 #include "Render_Sprite.h"
 #include <ext.hpp>
+#include <GLFW/glfw3.h>
 
 Core::RenderSprite::RenderSprite() {
     this->initSprite();
@@ -11,11 +12,16 @@ Core::RenderSprite::~RenderSprite() {
     glDeleteBuffers(1, &this->VBO);
 }
 
-void Core::RenderSprite::DrawSprite(GLuint program, float width, float height) {
-    glm::mat4 projection = glm::ortho(0.0f, 1000.0f, 1000.0f, 0.0f, -1.0f, 1.0f);
+void Core::RenderSprite::DrawSprite(GLuint program, float spriteWidth, float spriteHeight) {
+    GLFWmonitor* primaryMonitor = glfwGetPrimaryMonitor();
+    const GLFWvidmode* mode = glfwGetVideoMode(primaryMonitor);
+    float screenWidth = mode->width;
+    float screenHeight = mode->height;
+
+    glm::mat4 projection = glm::ortho(0.0f, screenWidth, screenHeight, 0.0f, -1.0f, 1.0f);
     glm::mat4 model = glm::mat4(1.0f);
-    model = glm::translate(model, glm::vec3(500.0f - width / 2.0f, 500.0f - height / 2.0f, 0.0f));
-    model = glm::scale(model, glm::vec3(glm::vec2(width, height), 1.0f));
+    model = glm::translate(model, glm::vec3((screenWidth - spriteWidth) / 2.0f, (screenHeight - spriteHeight) / 2.0f, 0.0f));
+    model = glm::scale(model, glm::vec3(glm::vec2(spriteWidth, spriteHeight), 1.0f));
 
     glUniformMatrix4fv(glGetUniformLocation(program, "projection"), 1, GL_FALSE, (float*)&projection);
     glUniformMatrix4fv(glGetUniformLocation(program, "model"), 1, GL_FALSE, (float*)&model);
