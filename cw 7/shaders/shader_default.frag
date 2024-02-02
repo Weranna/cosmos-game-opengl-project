@@ -13,6 +13,11 @@ uniform vec3 cameraPos;
 
 uniform vec3 lightPos;
 uniform vec3 lightColor;
+// Add uniform variables for cone light
+uniform vec3 spotlightPos;
+uniform vec3 spotlightConeDir;
+uniform vec3 spotlightColor;
+uniform float spotlightPhi;
 
 uniform float exposition;
 
@@ -105,6 +110,16 @@ void main(){
 
     // Sun
     ilumination = ilumination + PBRLight(lightDir, 10*lightColor, normal, viewDir);
+
+    //flashlight
+	vec3 spotlightDir= normalize(spotlightDirTS);
+	//vec3 spotlightDir= normalize(spotlightPos-worldPos);
+	
+
+    float angle_atenuation = clamp((dot(-normalize(spotlightPos-worldPos),spotlightConeDir)-0.5)*3,0,1);
+	attenuatedlightColor = angle_atenuation*spotlightColor/pow(length(spotlightPos-worldPos),2);
+    attenuatedlightColor *= 80.0;
+	ilumination=ilumination+PBRLight(spotlightDir,attenuatedlightColor,normal,viewDir);
 
     outColor = vec4(vec3(1.0) - exp(-ilumination * exposition), 1);
 }

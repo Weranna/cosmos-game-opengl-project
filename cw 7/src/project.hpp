@@ -45,13 +45,21 @@ GLuint skyboxTexture;
 
 Core::Shader_Loader shaderLoader;
 Core::RenderSprite* renderSprite;
+Core::RenderSprite* renderSpriteEnd;
+Core::RenderSprite* renderSpriteStart;
 
 glm::vec3 cameraPos = glm::vec3(20.f, 0, 0);
 glm::vec3 cameraDir = glm::vec3(-1.f, 0.f, 0.f);
 glm::vec3 spaceshipPos = glm::vec3(40.f, -20.f, 0);
 glm::vec3 spaceshipDir = glm::vec3(-1.f, 0.f, 0.f);
 
-bool showSprite = false;
+glm::vec3 spotlightPos = glm::vec3(0, 0, 0);
+glm::vec3 spotlightConeDir = glm::vec3(0, 0, 0);
+glm::vec3 spotlightColor = glm::vec3(0.4, 0.4, 0.9) * 3;
+float spotlightPhi = 3.14 / 4;
+
+bool showMissions = false;
+bool hideInstruction = false;
 
 float aspectRatio = 1.f;
 float exposition = 1.f;
@@ -170,6 +178,10 @@ void drawPlanet(Core::RenderContext& context, TextureSet textures, float planetO
 	glUniform3f(glGetUniformLocation(programDefault, "cameraPos"), cameraPos.x, cameraPos.y, cameraPos.z);
 	glUniform3f(glGetUniformLocation(programDefault, "lightPos"), 0.0f, 0.0f, 0.0f);
 	glUniform3f(glGetUniformLocation(programDefault, "lightColor"), 1.0f, 1.0f, 1.0f);
+	glUniform3f(glGetUniformLocation(programDefault, "spotlightPos"), spotlightPos.x, spotlightPos.y, spotlightPos.z);
+	glUniform3f(glGetUniformLocation(programDefault, "spotlightConeDir"), spotlightConeDir.x, spotlightConeDir.y, spotlightConeDir.z);
+	glUniform3f(glGetUniformLocation(programDefault, "spotlightColor"), spotlightColor.r, spotlightColor.g, spotlightColor.b);
+	glUniform1f(glGetUniformLocation(programDefault, "spotlightPhi"), spotlightPhi);
 	Core::SetActiveTexture(textures.albedo, "albedoTexture", programDefault, 0);
 	Core::SetActiveTexture(textures.normal, "normalTexture", programDefault, 1);
 	Core::SetActiveTexture(textures.ao, "aoTexture", programDefault, 2);
@@ -333,17 +345,24 @@ void renderScene(GLFWwindow* window)
 		}
 	}
 
-	if (showSprite)
+	if (!hideInstruction)
 	{
 		glUseProgram(programSprite);
-		renderSprite->DrawSprite(programSprite);
+		renderSpriteStart->DrawSprite(programSprite, 740.0f, 880.0f);
+	}
+
+	if (showMissions)
+	{
+		glUseProgram(programSprite);
+		renderSprite->DrawSprite(programSprite, 740.0f, 580.0f);
 	}
 
 	if (trashDestroyed == 10)
 	{
 		renderSprite->UpdateSprite(sprites.sprite_2);
+		glUseProgram(programSprite);
+		renderSpriteEnd->DrawSprite(programSprite, 740.0f, 580.0f);
 	}
-
 	glUseProgram(0);
 	glfwSwapBuffers(window);
 }
@@ -352,23 +371,6 @@ void framebuffer_size_callback(GLFWwindow* window, int width, int height)
 {
 	aspectRatio = width / float(height);
 	glViewport(0, 0, width, height);
-}
-void loadModelToContext(std::string path, Core::RenderContext& context)
-{
-	Assimp::Importer import;
-	const aiScene* scene = import.ReadFile(path, aiProcess_Triangulate | aiProcess_CalcTangentSpace);
-
-	if (!scene || scene->mFlags & AI_SCENE_FLAGS_INCOMPLETE || !scene->mRootNode)
-	{
-		throw std::runtime_error("ERROR::ASSIMP::" + std::string(import.GetErrorString()));
-	}
-
-	if (scene->mNumMeshes == 0)
-	{
-		throw std::runtime_error("ERROR::ASSIMP::No meshes found in the model.");
-	}
-
-	context.initFromAssimpMesh(scene->mMeshes[0]);
 }
 
 // ³aduje tekstury
@@ -416,6 +418,8 @@ void initTextures() {
 	sprites.sprite_6 = Core::LoadTexture("./img/mission_board_6.png");
 	sprites.sprite_7 = Core::LoadTexture("./img/mission_board_7.png");
 	sprites.sprite_8 = Core::LoadTexture("./img/mission_board_8.png");
+	sprites.sprite_end = Core::LoadTexture("./img/mission_board_end.png");
+	sprites.sprite_start = Core::LoadTexture("./img/instruction.png");
 
 	std::string skyboxFilepaths[6] = {
 	"./textures/skybox/skybox_right.png",
@@ -452,12 +456,19 @@ void init(GLFWwindow* window)
 
 	initTextures();
 	renderSprite = new Core::RenderSprite();
+	renderSpriteEnd = new Core::RenderSprite();
+	renderSpriteStart = new Core::RenderSprite();
+
 	renderSprite->UpdateSprite(sprites.sprite_1);
+	renderSpriteEnd->UpdateSprite(sprites.sprite_end);
+	renderSpriteStart->UpdateSprite(sprites.sprite_start);
 }
 
 void shutdown(GLFWwindow* window)
 {
 	delete renderSprite;
+	delete renderSpriteEnd;
+	delete renderSpriteStart;
 	shaderLoader.DeleteProgram(programDefault);
 	glDeleteTextures(1, &skyboxTexture);
 }
@@ -476,17 +487,30 @@ void processInput(GLFWwindow* window)
 	if (glfwGetKey(window, GLFW_KEY_ESCAPE) == GLFW_PRESS) {
 		glfwSetWindowShouldClose(window, true);
 	}
-	if (glfwGetKey(window, GLFW_KEY_W) == GLFW_PRESS)
-		newSpaceshipPos += spaceshipDir * moveSpeed;
-	if (glfwGetKey(window, GLFW_KEY_S) == GLFW_PRESS)
-		newSpaceshipPos -= spaceshipDir * moveSpeed;
-	if (glfwGetKey(window, GLFW_KEY_TAB) == GLFW_PRESS)
-	{
-		showSprite = true;
-	}
-	else
-	{
-		showSprite = false;
+	if (glfwGetKey(window, GLFW_KEY_X) == GLFW_PRESS)
+		hideInstruction = true;
+
+	if (hideInstruction == true) {
+		if (glfwGetKey(window, GLFW_KEY_W) == GLFW_PRESS)
+			newSpaceshipPos += spaceshipDir * moveSpeed;
+		if (glfwGetKey(window, GLFW_KEY_S) == GLFW_PRESS)
+			newSpaceshipPos -= spaceshipDir * moveSpeed;
+		if (glfwGetKey(window, GLFW_KEY_TAB) == GLFW_PRESS)
+		{
+			showMissions = true;
+		}
+		else
+		{
+			showMissions = false;
+		}
+		if (glfwGetKey(window, GLFW_KEY_SPACE) == GLFW_PRESS && !laser.isActive)
+		{
+			laser.isActive = true;
+			laser.position = spaceshipPos;
+			laser.direction = spaceshipDir;
+			laser.startTime = glfwGetTime();
+
+		}
 	}
 
 	// Jeœli nie wykryto kolizji, zaktualizuj pozycjê statku
@@ -496,6 +520,9 @@ void processInput(GLFWwindow* window)
 
 	cameraPos = spaceshipPos - 1.5 * spaceshipDir + glm::vec3(0, 1, 0) * 0.5f;
 	cameraDir = spaceshipDir;
+
+	spotlightPos = spaceshipPos + 0.2 * spaceshipDir;
+	spotlightConeDir = spaceshipDir;
 	
 	double mouseX, mouseY;
 	glfwGetCursorPos(window, &mouseX, &mouseY);
@@ -521,15 +548,6 @@ void processInput(GLFWwindow* window)
 
 	glm::quat spaceshipRotation = glm::quat(glm::vec3(glm::radians(spaceshipUp), glm::radians(-spaceshipSide), 0.0f));
 	spaceshipDir = glm::lerp(spaceshipDir, glm::rotate(spaceshipRotation, glm::vec3(0.0f, 0.0f, -1.0f)), 0.1f);
-
-	if (glfwGetKey(window, GLFW_KEY_SPACE) == GLFW_PRESS && !laser.isActive)
-	{
-		laser.isActive = true;
-		laser.position = spaceshipPos;
-		laser.direction = spaceshipDir;
-		laser.startTime = glfwGetTime();
-	
-	}
 
 }
 
