@@ -30,7 +30,6 @@ std::map<std::string, std::map<int, bool>> trashDisplayInfoMap = {
 };
 
 std::vector<std::vector<glm::vec3>> asteroidPositions(3, std::vector<glm::vec3>(8, glm::vec3(0.f, 0.f, 0.f)));
-std::vector<glm::vec3> barierPositions;
 
 Textures textures;
 TextureSprite sprites;
@@ -49,7 +48,7 @@ Core::RenderSprite* renderSprite;
 
 glm::vec3 cameraPos = glm::vec3(20.f, 0, 0);
 glm::vec3 cameraDir = glm::vec3(-1.f, 0.f, 0.f);
-glm::vec3 spaceshipPos = glm::vec3(40.f, 20.f, 0);
+glm::vec3 spaceshipPos = glm::vec3(40.f, -20.f, 0);
 glm::vec3 spaceshipDir = glm::vec3(-1.f, 0.f, 0.f);
 
 bool showSprite = false;
@@ -228,12 +227,6 @@ bool checkCollision(glm::vec3 object1Pos, float object1Radius) {
 			}
 		}
 	}
-	for (const auto& barierPos : barierPositions) {
-		distance = glm::length(object1Pos - barierPos);
-		if (distance < (object1Radius + 1.5f)) {
-			return true;
-		}
-	}
 	return false;
 }
 
@@ -257,9 +250,9 @@ void renderScene(GLFWwindow* window)
 	glUseProgram(programDefault);
 
 	// UK£AD S£ONECZNY - PLANETY (NA RAZIE BEZ KSIÊ¯YCA)
-	drawPlanet(contexts.sphereContext, textures.planets.mercury, 15.0f*5, 0.2f, time, glm::vec3(0.5*9),1*9, std::string("Mercury"));
-	drawPlanet(contexts.sphereContext, textures.planets.venus, 20.0f * 5, 0.175f, time, glm::vec3(1.f * 9),1.5 * 9, std::string("Venus"));
-	drawPlanet(contexts.sphereContext, textures.planets.earth, 25.0f * 5, 0.15f, time, glm::vec3(1.3f * 9),2 * 9, std::string("Earth"));
+	drawPlanet(contexts.sphereContext, textures.planets.mercury, 15.0f * 5, 0.2f, time, glm::vec3(0.5 * 9), 1 * 9, std::string("Mercury"));
+	drawPlanet(contexts.sphereContext, textures.planets.venus, 20.0f * 5, 0.175f, time, glm::vec3(1.f * 9), 1.5 * 9, std::string("Venus"));
+	drawPlanet(contexts.sphereContext, textures.planets.earth, 25.0f * 5, 0.15f, time, glm::vec3(1.3f * 9), 2 * 9, std::string("Earth"));
 	drawPlanet(contexts.sphereContext, textures.planets.mars, 30.0f * 5, 0.125f, time, glm::vec3(1.3f * 9), 2 * 9, std::string("Mars"));
 	drawPlanet(contexts.sphereContext, textures.planets.jupiter, 40.0f * 5, 0.1f, time, glm::vec3(2.5f * 9), 3 * 9, std::string("Jupiter"));
 	drawPlanet(contexts.sphereContext, textures.planets.saturn, 50.0f * 5, 0.075f, time, glm::vec3(2.2f * 9), 3 * 9, std::string("Saturn"));
@@ -288,7 +281,7 @@ void renderScene(GLFWwindow* window)
 			position.x += distribution(generator) * 5.f;
 			position.y += distribution(generator) * 5.f;
 			position.z += distribution(generator) * 5.f;
-			
+
 			asteroidPositions[row][col] = position;
 
 			transformation = glm::translate(glm::mat4(1.0f), position) *
@@ -298,31 +291,11 @@ void renderScene(GLFWwindow* window)
 			drawObjectTexture(programDefault, contexts.asteroidContext, textures.asteroid, transformation);
 		}
 	}
-	initialAsteroidPosition = glm::vec3(0.f, -40.f, 0.f);
-	bool moveLeft = true;
-	float offsetX = 0;
-	float offsetZ = 2.5f;
-	for (int i = 0; i < 10; ++i) {
-		offsetX = (moveLeft) ? -2.5f : 2.5f;
-
-		initialAsteroidPosition.x += offsetX;
-		initialAsteroidPosition.z += offsetZ;
-
-		transformation = glm::translate(glm::mat4(1.0f), initialAsteroidPosition) *
-			glm::rotate(0.5f * time, glm::vec3(0.0f, 1.0f, 0.0f)) *
-			glm::rotate(0.5f * time, glm::vec3(1.0f, 0.0f, 0.0f)) *
-			glm::rotate(0.5f * time, glm::vec3(0.0f, 0.0f, 1.0f));
-
-		if (i >= barierPositions.size()) {
-			barierPositions.push_back(initialAsteroidPosition);
-		}
-		else {
-			barierPositions[i] = initialAsteroidPosition;
-		}
-
-		drawObjectTexture(programDefault, contexts.asteroidContext, textures.asteroid, transformation);
-
-	}
+	// tor wyœcigowy
+	transformation = glm::translate(glm::vec3(0.f, -60.f, 0.f))*glm::scale( glm::vec3(50.f))* glm::rotate(glm::radians(90.0f), glm::vec3(1.0f, 0.f, 0.0f));
+	drawObjectTexture(programDefault, contexts.barierContext, textures.barier, transformation);
+	transformation = glm::translate(glm::vec3(0.f, -60.f, 0.f)) * glm::scale(glm::vec3(70.f)) * glm::rotate(glm::radians(90.0f), glm::vec3(1.0f, 0.f, 0.0f));
+	drawObjectTexture(programDefault, contexts.barierContext, textures.barier, transformation);
 
 	//STATEK
 	glm::vec3 spaceshipSide = glm::normalize(glm::cross(spaceshipDir, glm::vec3(0.f, 1.f, 0.f)));
@@ -422,6 +395,7 @@ void initTextures() {
 
 	textures.planets.mercury = loadTextureSet("./textures/planets/mercury/planet1_albedo.png", "./textures/planets/mercury/planet1_normal.png", "./textures/planets/mercury/planet1_ao.png", "./textures/planets/mercury/planet1_roughness.png", "./textures/planets/mercury/planet1_metallic.png");
 	textures.planets.venus = loadTextureSet("./textures/planets/venus/planet2_albedo.png", "./textures/planets/venus/planet2_normal.png", "./textures/planets/venus/planet2_ao.png", "./textures/planets/venus/planet2_roughness.png", "./textures/planets/venus/planet2_metallic.png");
+	textures.planets.venus = loadTextureSet("./textures/planets/venus/planet2_albedo.png", "./textures/planets/venus/planet2_normal.png", "./textures/planets/venus/planet2_ao.png", "./textures/planets/venus/planet2_roughness.png", "./textures/planets/venus/planet2_metallic.png");
 	textures.planets.earth = loadTextureSet("./textures/planets/earth/earth_albedo.jpg", "./textures/planets/earth/earth_normal.jpg", "./textures/planets/earth/earth_ao.png", "./textures/planets/earth/earth_roughness.jpg", "./textures/planets/earth/earth_metallic.png");
 	textures.planets.mars = loadTextureSet("./textures/planets/mars/mars_albedo.jpg", "./textures/planets/mars/mars_normal.png", "./textures/planets/mars/mars_ao.jpg", "./textures/planets/mars/mars_roughness.jpg", "./textures/planets/mars/mars_metallic.png");
 	textures.planets.jupiter = loadTextureSet("./textures/planets/jupiter/jupiter_albedo.jpg", "./textures/planets/jupiter/jupiter_normal.png", "./textures/planets/jupiter/jupiter_ao.jpg", "./textures/planets/jupiter/jupiter_roughness.jpg", "./textures/planets/jupiter/jupiter_metallic.png");
@@ -431,6 +405,7 @@ void initTextures() {
 	textures.trash1 = loadTextureSet("./textures/trash/trash1_albedo.jpg", "./textures/trash/trash1_normal.png", "./textures/trash/trash1_AO.jpg", "./textures/trash/trash1_roughness.jpg", "./textures/trash/trash1_metallic.jpg");
 	textures.trash2 = loadTextureSet("./textures/trash/trash2_albedo.jpg", "./textures/trash/trash2_normal.png", "./textures/trash/trash2_AO.jpg", "./textures/trash/trash2_roughness.jpg", "./textures/trash/trash2_metallic.jpg");
 	textures.asteroid = loadTextureSet("./textures/asteroid/asteroid_albedo.png", "./textures/asteroid/asteroid_normal.png", "./textures/planets/mars/mars_ao.jpg", "./textures/asteroid/asteroid_roughness.png", "./textures/asteroid/asteroid_metallic.png");
+	textures.barier = loadTextureSet("./textures/barier/barier_albedo.jpeg", "./textures/barier/barier_normal.jpeg", "./textures/planets/barier/barier_ao.jpeg", "./textures/barier/barier_roughness.jpeg", "./textures/barier/barier_metallic.jpeg");
 	textures.laser = loadTextureSet("./textures/spaceship/laser_albedo.jpg","./textures/spaceship/laser_normal.png","./textures/spaceship/laser_ao.jpg","./textures/spaceship/laser_roughness.jpg","./textures/spaceship/laser_metallic.jpg");
 
 	sprites.sprite_1 = Core::LoadTexture("./img/mission_board_1.png");
@@ -473,6 +448,7 @@ void init(GLFWwindow* window)
 	loadModelToContext("./models/asteroid.obj", contexts.asteroidContext);
 	loadModelToContext("./models/laser.glb", contexts.laserContext);
 	loadModelToContext("./models/cube.obj", contexts.skyboxContext);
+	loadModelToContext("./models/barier.fbx", contexts.barierContext);
 
 	initTextures();
 	renderSprite = new Core::RenderSprite();
