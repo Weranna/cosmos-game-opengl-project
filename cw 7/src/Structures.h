@@ -14,6 +14,7 @@ struct Contexts {
     Core::RenderContext asteroidContext;
     Core::RenderContext laserContext;
     Core::RenderContext skyboxContext;
+    Core::RenderContext barierContext;
 };
 
 struct TextureSet {
@@ -43,6 +44,7 @@ struct Textures {
     TextureSet trash2;
     TextureSet asteroid;
     TextureSet laser;
+    TextureSet barier;
 };
 
 struct ObjectInfo {
@@ -71,8 +73,6 @@ struct TextureSprite {
     GLuint sprite_2;
     GLuint sprite_3;
     GLuint sprite_4;
-    GLuint sprite_5;
-    GLuint sprite_6;
-    GLuint sprite_7;
-    GLuint sprite_8;
+    GLuint sprite_end;
+    GLuint sprite_start;
 };

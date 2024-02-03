@@ -31,7 +31,6 @@ std::map<std::string, std::map<int, bool>> trashDisplayInfoMap = {
 };
 
 std::vector<std::vector<glm::vec3>> asteroidPositions(3, std::vector<glm::vec3>(8, glm::vec3(0.f, 0.f, 0.f)));
-std::vector<glm::vec3> barierPositions;
 
 Textures textures;
 TextureSprite sprites;
@@ -47,10 +46,12 @@ GLuint skyboxTexture;
 
 Core::Shader_Loader shaderLoader;
 Core::RenderSprite* renderSprite;
+Core::RenderSprite* renderSpriteEnd;
+Core::RenderSprite* renderSpriteStart;
 
 glm::vec3 cameraPos = glm::vec3(20.f, 0, 0);
 glm::vec3 cameraDir = glm::vec3(-1.f, 0.f, 0.f);
-glm::vec3 spaceshipPos = glm::vec3(40.f, 20.f, 0);
+glm::vec3 spaceshipPos = glm::vec3(40.f, -20.f, 0);
 glm::vec3 spaceshipDir = glm::vec3(-1.f, 0.f, 0.f);
 
 glm::vec3 spotlightPos = glm::vec3(0, 0, 0);
@@ -58,7 +59,9 @@ glm::vec3 spotlightConeDir = glm::vec3(0, 0, 0);
 glm::vec3 spotlightColor = glm::vec3(0.4, 0.4, 0.9) * 3;
 float spotlightPhi = 3.14 / 4;
 
-bool showSprite = false;
+bool showMissions = false;
+bool hideInstruction = false;
+bool missionsComplete = false;
 
 float aspectRatio = 1.f;
 float exposition = 1.f;
@@ -252,12 +255,6 @@ bool checkCollision(glm::vec3 object1Pos, float object1Radius) {
 			}
 		}
 	}
-	for (const auto& barierPos : barierPositions) {
-		distance = glm::length(object1Pos - barierPos);
-		if (distance < (object1Radius + 1.5f)) {
-			return true;
-		}
-	}
 	return false;
 }
 
@@ -270,6 +267,7 @@ void renderScene(GLFWwindow* window)
 	updateDeltaTime(time);
 
 	Core::DrawSkybox(programSkybox, contexts.skyboxContext, skyboxTexture, cameraDir, cameraPos, aspectRatio);
+	glClear(GL_DEPTH_BUFFER_BIT);
 
 	glUseProgram(programSun);
 
@@ -279,14 +277,11 @@ void renderScene(GLFWwindow* window)
 	drawSun(contexts.sphereContext, glm::scale(glm::vec3(30.f)) * glm::translate(sunPosition), textures.sun);
 
 	glUseProgram(programDefault);
-	
-	
-
 
 	// UK£AD S£ONECZNY - PLANETY (NA RAZIE BEZ KSIÊ¯YCA)
-	drawPlanet(contexts.sphereContext, textures.planets.mercury, 15.0f*5, 0.2f, time, glm::vec3(0.5*9),1*9, std::string("Mercury"));
-	drawPlanet(contexts.sphereContext, textures.planets.venus, 20.0f * 5, 0.175f, time, glm::vec3(1.f * 9),1.5 * 9, std::string("Venus"));
-	drawPlanet(contexts.sphereContext, textures.planets.earth, 25.0f * 5, 0.15f, time, glm::vec3(1.3f * 9),2 * 9, std::string("Earth"));
+	drawPlanet(contexts.sphereContext, textures.planets.mercury, 15.0f * 5, 0.2f, time, glm::vec3(0.5 * 9), 1 * 9, std::string("Mercury"));
+	drawPlanet(contexts.sphereContext, textures.planets.venus, 20.0f * 5, 0.175f, time, glm::vec3(1.f * 9), 1.5 * 9, std::string("Venus"));
+	drawPlanet(contexts.sphereContext, textures.planets.earth, 25.0f * 5, 0.15f, time, glm::vec3(1.3f * 9), 2 * 9, std::string("Earth"));
 	drawPlanet(contexts.sphereContext, textures.planets.mars, 30.0f * 5, 0.125f, time, glm::vec3(1.3f * 9), 2 * 9, std::string("Mars"));
 	drawPlanet(contexts.sphereContext, textures.planets.jupiter, 40.0f * 5, 0.1f, time, glm::vec3(2.5f * 9), 3 * 9, std::string("Jupiter"));
 	drawPlanet(contexts.sphereContext, textures.planets.saturn, 50.0f * 5, 0.075f, time, glm::vec3(2.2f * 9), 3 * 9, std::string("Saturn"));
@@ -319,7 +314,7 @@ void renderScene(GLFWwindow* window)
 			position.x += distribution(generator) * 5.f;
 			position.y += distribution(generator) * 5.f;
 			position.z += distribution(generator) * 5.f;
-			
+
 			asteroidPositions[row][col] = position;
 
 			transformation = glm::translate(glm::mat4(1.0f), position) *
@@ -329,31 +324,11 @@ void renderScene(GLFWwindow* window)
 			drawObjectTexture(programDefault, contexts.asteroidContext, textures.asteroid, transformation);
 		}
 	}
-	initialAsteroidPosition = glm::vec3(0.f, -40.f, 0.f);
-	bool moveLeft = true;
-	float offsetX = 0;
-	float offsetZ = 2.5f;
-	for (int i = 0; i < 10; ++i) {
-		offsetX = (moveLeft) ? -2.5f : 2.5f;
-
-		initialAsteroidPosition.x += offsetX;
-		initialAsteroidPosition.z += offsetZ;
-
-		transformation = glm::translate(glm::mat4(1.0f), initialAsteroidPosition) *
-			glm::rotate(0.5f * time, glm::vec3(0.0f, 1.0f, 0.0f)) *
-			glm::rotate(0.5f * time, glm::vec3(1.0f, 0.0f, 0.0f)) *
-			glm::rotate(0.5f * time, glm::vec3(0.0f, 0.0f, 1.0f));
-
-		if (i >= barierPositions.size()) {
-			barierPositions.push_back(initialAsteroidPosition);
-		}
-		else {
-			barierPositions[i] = initialAsteroidPosition;
-		}
-
-		drawObjectTexture(programDefault, contexts.asteroidContext, textures.asteroid, transformation);
-
-	}
+	// tor wyœcigowy
+	transformation = glm::translate(glm::vec3(0.f, -50.f, 0.f))*glm::scale( glm::vec3(50.f))* glm::rotate(glm::radians(270.f), glm::vec3(1.0f, 0.f, 0.0f));
+	drawObjectTexture(programDefault, contexts.barierContext, textures.barier, transformation);
+	transformation = glm::translate(glm::vec3(0.f, -50.f, 0.f)) * glm::scale(glm::vec3(70.f)) * glm::rotate(glm::radians(270.f), glm::vec3(1.0f, 0.f, 0.0f));
+	drawObjectTexture(programDefault, contexts.barierContext, textures.barier, transformation);
 
 	//STATEK
 	glm::vec3 spaceshipSide = glm::normalize(glm::cross(spaceshipDir, glm::vec3(0.f, 1.f, 0.f)));
@@ -391,19 +366,28 @@ void renderScene(GLFWwindow* window)
 		}
 	}
 
-	if (showSprite)
+	if (!hideInstruction)
 	{
 		glUseProgram(programSprite);
-		renderSprite->DrawSprite(programSprite);
+		renderSpriteStart->DrawSprite(programSprite, 740.0f, 880.0f);
+	}
+
+	if (showMissions)
+	{
+		glUseProgram(programSprite);
+		renderSprite->DrawSprite(programSprite, 740.0f, 580.0f);
 	}
 
 	if (trashDestroyed == 10)
 	{
 		renderSprite->UpdateSprite(sprites.sprite_2);
+		missionsComplete = true;
 	}
-
-	
-
+	if (missionsComplete)
+	{
+		glUseProgram(programSprite);
+		renderSpriteEnd->DrawSprite(programSprite, 740.0f, 580.0f);
+	}
 	glUseProgram(0);
 	glfwSwapBuffers(window);
 }
@@ -412,23 +396,6 @@ void framebuffer_size_callback(GLFWwindow* window, int width, int height)
 {
 	aspectRatio = width / float(height);
 	glViewport(0, 0, width, height);
-}
-void loadModelToContext(std::string path, Core::RenderContext& context)
-{
-	Assimp::Importer import;
-	const aiScene* scene = import.ReadFile(path, aiProcess_Triangulate | aiProcess_CalcTangentSpace);
-
-	if (!scene || scene->mFlags & AI_SCENE_FLAGS_INCOMPLETE || !scene->mRootNode)
-	{
-		throw std::runtime_error("ERROR::ASSIMP::" + std::string(import.GetErrorString()));
-	}
-
-	if (scene->mNumMeshes == 0)
-	{
-		throw std::runtime_error("ERROR::ASSIMP::No meshes found in the model.");
-	}
-
-	context.initFromAssimpMesh(scene->mMeshes[0]);
 }
 
 // ³aduje tekstury
@@ -455,6 +422,7 @@ void initTextures() {
 
 	textures.planets.mercury = loadTextureSet("./textures/planets/mercury/planet1_albedo.png", "./textures/planets/mercury/planet1_normal.png", "./textures/planets/mercury/planet1_ao.png", "./textures/planets/mercury/planet1_roughness.png", "./textures/planets/mercury/planet1_metallic.png");
 	textures.planets.venus = loadTextureSet("./textures/planets/venus/planet2_albedo.png", "./textures/planets/venus/planet2_normal.png", "./textures/planets/venus/planet2_ao.png", "./textures/planets/venus/planet2_roughness.png", "./textures/planets/venus/planet2_metallic.png");
+	textures.planets.venus = loadTextureSet("./textures/planets/venus/planet2_albedo.png", "./textures/planets/venus/planet2_normal.png", "./textures/planets/venus/planet2_ao.png", "./textures/planets/venus/planet2_roughness.png", "./textures/planets/venus/planet2_metallic.png");
 	textures.planets.earth = loadTextureSet("./textures/planets/earth/earth_albedo.jpg", "./textures/planets/earth/earth_normal.jpg", "./textures/planets/earth/earth_ao.png", "./textures/planets/earth/earth_roughness.jpg", "./textures/planets/earth/earth_metallic.png");
 	textures.planets.mars = loadTextureSet("./textures/planets/mars/mars_albedo.jpg", "./textures/planets/mars/mars_normal.png", "./textures/planets/mars/mars_ao.jpg", "./textures/planets/mars/mars_roughness.jpg", "./textures/planets/mars/mars_metallic.png");
 	textures.planets.jupiter = loadTextureSet("./textures/planets/jupiter/jupiter_albedo.jpg", "./textures/planets/jupiter/jupiter_normal.png", "./textures/planets/jupiter/jupiter_ao.jpg", "./textures/planets/jupiter/jupiter_roughness.jpg", "./textures/planets/jupiter/jupiter_metallic.png");
@@ -464,16 +432,15 @@ void initTextures() {
 	textures.trash1 = loadTextureSet("./textures/trash/trash1_albedo.jpg", "./textures/trash/trash1_normal.png", "./textures/trash/trash1_AO.jpg", "./textures/trash/trash1_roughness.jpg", "./textures/trash/trash1_metallic.jpg");
 	textures.trash2 = loadTextureSet("./textures/trash/trash2_albedo.jpg", "./textures/trash/trash2_normal.png", "./textures/trash/trash2_AO.jpg", "./textures/trash/trash2_roughness.jpg", "./textures/trash/trash2_metallic.jpg");
 	textures.asteroid = loadTextureSet("./textures/asteroid/asteroid_albedo.png", "./textures/asteroid/asteroid_normal.png", "./textures/planets/mars/mars_ao.jpg", "./textures/asteroid/asteroid_roughness.png", "./textures/asteroid/asteroid_metallic.png");
+	textures.barier = loadTextureSet("./textures/barier/barier_albedo.jpeg", "./textures/barier/barier_normal.png", "./textures/planets/barier/barier_ao.png", "./textures/barier/barier_roughness.jpeg", "./textures/barier/barier_metallic.png");
 	textures.laser = loadTextureSet("./textures/spaceship/laser_albedo.jpg","./textures/spaceship/laser_normal.png","./textures/spaceship/laser_ao.jpg","./textures/spaceship/laser_roughness.jpg","./textures/spaceship/laser_metallic.jpg");
 
 	sprites.sprite_1 = Core::LoadTexture("./img/mission_board_1.png");
 	sprites.sprite_2 = Core::LoadTexture("./img/mission_board_2.png");
 	sprites.sprite_3 = Core::LoadTexture("./img/mission_board_3.png");
 	sprites.sprite_4 = Core::LoadTexture("./img/mission_board_4.png");
-	sprites.sprite_5 = Core::LoadTexture("./img/mission_board_5.png");
-	sprites.sprite_6 = Core::LoadTexture("./img/mission_board_6.png");
-	sprites.sprite_7 = Core::LoadTexture("./img/mission_board_7.png");
-	sprites.sprite_8 = Core::LoadTexture("./img/mission_board_8.png");
+	sprites.sprite_end = Core::LoadTexture("./img/mission_board_end.png");
+	sprites.sprite_start = Core::LoadTexture("./img/instruction.png");
 
 	std::string skyboxFilepaths[6] = {
 	"./textures/skybox/skybox_right.png",
@@ -506,15 +473,23 @@ void init(GLFWwindow* window)
 	loadModelToContext("./models/asteroid.obj", contexts.asteroidContext);
 	loadModelToContext("./models/laser.glb", contexts.laserContext);
 	loadModelToContext("./models/cube.obj", contexts.skyboxContext);
+	loadModelToContext("./models/barier.fbx", contexts.barierContext);
 
 	initTextures();
 	renderSprite = new Core::RenderSprite();
+	renderSpriteEnd = new Core::RenderSprite();
+	renderSpriteStart = new Core::RenderSprite();
+
 	renderSprite->UpdateSprite(sprites.sprite_1);
+	renderSpriteEnd->UpdateSprite(sprites.sprite_end);
+	renderSpriteStart->UpdateSprite(sprites.sprite_start);
 }
 
 void shutdown(GLFWwindow* window)
 {
 	delete renderSprite;
+	delete renderSpriteEnd;
+	delete renderSpriteStart;
 	shaderLoader.DeleteProgram(programDefault);
 	glDeleteTextures(1, &skyboxTexture);
 }
@@ -533,17 +508,30 @@ void processInput(GLFWwindow* window)
 	if (glfwGetKey(window, GLFW_KEY_ESCAPE) == GLFW_PRESS) {
 		glfwSetWindowShouldClose(window, true);
 	}
-	if (glfwGetKey(window, GLFW_KEY_W) == GLFW_PRESS)
-		newSpaceshipPos += spaceshipDir * moveSpeed;
-	if (glfwGetKey(window, GLFW_KEY_S) == GLFW_PRESS)
-		newSpaceshipPos -= spaceshipDir * moveSpeed;
-	if (glfwGetKey(window, GLFW_KEY_TAB) == GLFW_PRESS)
-	{
-		showSprite = true;
-	}
-	else
-	{
-		showSprite = false;
+	if (glfwGetKey(window, GLFW_KEY_X) == GLFW_PRESS)
+		hideInstruction = true;
+
+	if (hideInstruction == true) {
+		if (glfwGetKey(window, GLFW_KEY_W) == GLFW_PRESS)
+			newSpaceshipPos += spaceshipDir * moveSpeed;
+		if (glfwGetKey(window, GLFW_KEY_S) == GLFW_PRESS)
+			newSpaceshipPos -= spaceshipDir * moveSpeed;
+		if (glfwGetKey(window, GLFW_KEY_TAB) == GLFW_PRESS)
+		{
+			showMissions = true;
+		}
+		else
+		{
+			showMissions = false;
+		}
+		if (glfwGetKey(window, GLFW_KEY_SPACE) == GLFW_PRESS && !laser.isActive)
+		{
+			laser.isActive = true;
+			laser.position = spaceshipPos;
+			laser.direction = spaceshipDir;
+			laser.startTime = glfwGetTime();
+
+		}
 	}
 
 	// Jeœli nie wykryto kolizji, zaktualizuj pozycjê statku
@@ -581,15 +569,6 @@ void processInput(GLFWwindow* window)
 
 	glm::quat spaceshipRotation = glm::quat(glm::vec3(glm::radians(spaceshipUp), glm::radians(-spaceshipSide), 0.0f));
 	spaceshipDir = glm::lerp(spaceshipDir, glm::rotate(spaceshipRotation, glm::vec3(0.0f, 0.0f, -1.0f)), 0.1f);
-
-	if (glfwGetKey(window, GLFW_KEY_SPACE) == GLFW_PRESS && !laser.isActive)
-	{
-		laser.isActive = true;
-		laser.position = spaceshipPos;
-		laser.direction = spaceshipDir;
-		laser.startTime = glfwGetTime();
-	
-	}
 
 }
 

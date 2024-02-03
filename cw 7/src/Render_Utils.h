@@ -50,4 +50,6 @@ namespace Core
 	glm::mat4 createCameraMatrix(glm::vec3 cameraDir, glm::vec3 cameraPos);
 
 	glm::mat4 createPerspectiveMatrix(float aspectRatio);
+
+	void loadModelToContext(std::string path, Core::RenderContext& context);
 }

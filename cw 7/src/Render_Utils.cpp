@@ -181,3 +181,21 @@ glm::mat4 Core::createPerspectiveMatrix(float aspectRatio)
 
     return perspectiveMatrix;
 }
+
+void Core::loadModelToContext(std::string path, Core::RenderContext& context)
+{
+    Assimp::Importer import;
+    const aiScene* scene = import.ReadFile(path, aiProcess_Triangulate | aiProcess_CalcTangentSpace);
+
+    if (!scene || scene->mFlags & AI_SCENE_FLAGS_INCOMPLETE || !scene->mRootNode)
+    {
+        throw std::runtime_error("ERROR::ASSIMP::" + std::string(import.GetErrorString()));
+    }
+
+    if (scene->mNumMeshes == 0)
+    {
+        throw std::runtime_error("ERROR::ASSIMP::No meshes found in the model.");
+    }
+
+    context.initFromAssimpMesh(scene->mMeshes[0]);
+}
