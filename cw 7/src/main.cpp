@@ -22,6 +22,8 @@ int main(int argc, char** argv)
 	glfwWindowHint(GLFW_OPENGL_FORWARD_COMPAT, GL_TRUE);
 #endif
 
+	
+	
 	// tworzenie okna za pomoca glfw
 	GLFWwindow* window = glfwCreateWindow(1000, 1000, "Cosmos Game", NULL, NULL);
 	if (window == NULL)

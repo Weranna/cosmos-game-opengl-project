@@ -118,7 +118,7 @@ void main(){
 
     float angle_atenuation = clamp((dot(-normalize(spotlightPos-worldPos),spotlightConeDir)-0.5)*3,0,1);
 	attenuatedlightColor = angle_atenuation*spotlightColor/pow(length(spotlightPos-worldPos),2);
-    attenuatedlightColor *= 80.0;
+    attenuatedlightColor *= 1180.0;
 	ilumination=ilumination+PBRLight(spotlightDir,attenuatedlightColor,normal,viewDir);
 
     outColor = vec4(vec3(1.0) - exp(-ilumination * exposition), 1);
