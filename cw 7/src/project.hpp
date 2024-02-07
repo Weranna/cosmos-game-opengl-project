@@ -17,7 +17,7 @@
 #include <assimp/postprocess.h>
 #include <string>
 #include <random>
-
+#include <chrono>
 
 std::map<std::string, std::map<int, bool>> trashDisplayInfoMap = {
 	{"Mercury", {{0, true}, {1, true}, {2, true}, {3, true}}},
@@ -30,7 +30,7 @@ std::map<std::string, std::map<int, bool>> trashDisplayInfoMap = {
 	{"Neptun", {{0, true}, {1, true}, {2, true}, {3, true}}},
 };
 
-std::vector<std::vector<glm::vec3>> asteroidPositions(3, std::vector<glm::vec3>(8, glm::vec3(0.f, 0.f, 0.f)));
+std::vector<std::vector<glm::vec3>> asteroidPositions(4, std::vector<glm::vec3>(8, glm::vec3(0.f, 0.f, 0.f)));
 
 std::map<int, std::pair<glm::vec3, bool>> circlePositions{
 		{1, {glm::vec3(-58.f, -50.f, 30.f), false}},
@@ -95,13 +95,10 @@ float spaceshipRadius = 0.5f;
 int trashDestroyed = 0;
 int circleVisited = 0;
 
-float halfOuterSize = 25.0f;  // Po³owa d³ugoœci boku zewnêtrznej ramy
-float halfInnerSize = 15.0f;
-
-
 unsigned int bloomTexture;
 
-
+std::chrono::time_point<std::chrono::steady_clock> start_time;
+std::chrono::time_point<std::chrono::steady_clock> end_time;
 
 void updateDeltaTime(float time) {
 	if (lastTime < 0) {
@@ -270,7 +267,22 @@ bool checkCollision(glm::vec3 object1Pos, float object1Radius) {
 		if (!visited && distance < (object1Radius + 5.f)) {
 			visited = true;
 			circleVisited++;
-			if (circleVisited == 8) raceCompleted = true;
+			if (circleVisited == 1) start_time = std::chrono::steady_clock::now();
+			if (circleVisited == 8) {
+				end_time = std::chrono::steady_clock::now();
+				std::chrono::duration<double> elapsed_seconds = end_time - start_time;
+				if (elapsed_seconds.count() < 15.0) {
+					raceCompleted = true;
+					std::cout << "skonczyles wyscig";
+				}
+				else
+				{
+					circleVisited = 0;
+					for (auto& pair : circlePositions) {
+						pair.second.second = false;
+					}
+				}
+			}
 		}
 	}
 
@@ -328,7 +340,7 @@ void renderScene(GLFWwindow* window)
 
 	glUseProgram(programDefault);
 
-	// UK£AD S£ONECZNY - PLANETY (NA RAZIE BEZ KSIÊ¯YCA)
+	// planety
 	drawPlanet(contexts.sphereContext, textures.planets.mercury, 15.0f * 5, 0.2f, time, glm::vec3(0.5 * 9), 1 * 9, std::string("Mercury"));
 	drawPlanet(contexts.sphereContext, textures.planets.venus, 20.0f * 5, 0.175f, time, glm::vec3(1.f * 9), 1.5 * 9, std::string("Venus"));
 	drawPlanet(contexts.sphereContext, textures.planets.earth, 25.0f * 5, 0.15f, time, glm::vec3(1.3f * 9), 2 * 9, std::string("Earth"));
@@ -341,14 +353,14 @@ void renderScene(GLFWwindow* window)
 	/*for (const auto& planet : planets.planetsProperties) {
 		renderBillboardText(planet.second.coordinates, "planeta");
 	}*/
-	//LICZBY LOSOWE
+
 	glm::vec3 initialAsteroidPosition(0.f, 40.f, 0.f);
 	float offset = sin(time) * 2.0f;
 
 	std::default_random_engine generator; // Inicjalizacja generatora liczb losowych
 	std::uniform_real_distribution<float> distribution(-1.0f, 1.0f); // Zakres losowych wartoœci od -1.0 do 1.0
 
-	// W pêtli asteroidy
+	//asteroidy
 	for (int row = 0; row < 3; ++row)
 	{
 		for (int col = 0; col < 8; ++col)
@@ -371,6 +383,33 @@ void renderScene(GLFWwindow* window)
 			drawObjectTexture(programDefault, contexts.asteroidContext, textures.asteroid, transformation);
 		}
 	}
+
+	glm::vec3 position;
+
+	position = glm::vec3(-58.f + 3 * sin(time*2), -50.f, -8.f);
+	position.z += 15.f * cos(time*2);
+	transformation = glm::translate(position) * glm::rotate(2.f * time, glm::vec3(0.0f, 1.0f, 0.0f)) * glm::rotate(0.5f * time, glm::vec3(1.0f, 0.0f, 0.0f))*glm::scale(glm::vec3(2.f));
+	drawObjectTexture(programDefault, contexts.asteroidContext, textures.asteroid, transformation);
+	asteroidPositions[3][0] = position;
+
+	position = glm::vec3(58.f + 3 * sin(time * 2), -50.f, -8.f);
+	position.z += 15.f * cos(time * 2);
+	transformation = glm::translate(position) * glm::rotate(2.f * time, glm::vec3(0.0f, 1.0f, 0.0f)) * glm::rotate(0.5f * time, glm::vec3(1.0f, 0.0f, 0.0f)) * glm::scale(glm::vec3(2.f));
+	drawObjectTexture(programDefault, contexts.asteroidContext, textures.asteroid, transformation);
+	asteroidPositions[3][1] = position;
+
+	position = glm::vec3(-8.f, -50.f, 58.f + 3 * sin(time * 2));
+	position.x += 15.f * cos(time * 2);
+	transformation = glm::translate(position) * glm::rotate(2.f * time, glm::vec3(0.0f, 1.0f, 0.0f)) * glm::rotate(0.5f * time, glm::vec3(1.0f, 0.0f, 0.0f)) * glm::scale(glm::vec3(2.f));
+	drawObjectTexture(programDefault, contexts.asteroidContext, textures.asteroid, transformation);
+	asteroidPositions[3][2] = position;
+
+	position = glm::vec3(-8.f, -50.f, -58.f + 3 * sin(time * 2));
+	position.x += 15.f * cos(time * 2);
+	transformation = glm::translate(position) * glm::rotate(2.f * time, glm::vec3(0.0f, 1.0f, 0.0f)) * glm::rotate(0.5f * time, glm::vec3(1.0f, 0.0f, 0.0f)) * glm::scale(glm::vec3(2.f));
+	drawObjectTexture(programDefault, contexts.asteroidContext, textures.asteroid, transformation);
+	asteroidPositions[3][3] = position;
+
 	// tor wyœcigowy
 	transformation = glm::translate(glm::vec3(0.f, -50.f, 0.f))*glm::scale( glm::vec3(50.f))* glm::rotate(glm::radians(270.f), glm::vec3(1.0f, 0.f, 0.0f));
 	drawObjectTexture(programDefault, contexts.barierContext, textures.barier, transformation);
@@ -385,10 +424,7 @@ void renderScene(GLFWwindow* window)
 	for (int i = 0; i < 4; ++i, ++it) {
 		const glm::vec3& pos = it->second.first;
 		bool visited = it->second.second;
-
-		// Wybierz odpowiedni¹ teksturê w zale¿noœci od stanu okrêgu
-		auto& texture = visited ? textures.asteroid : textures.circle;
-
+		if (visited) texture = textures.circle_dark; else texture = textures.circle_bright;
 		// Rysuj okr¹g z odpowiedni¹ tekstur¹ i obrótem
 		drawObjectTexture(programDefault, contexts.circleContext, texture,
 			glm::translate(pos) * glm::scale(glm::vec3(15.f)) * glm::rotate(glm::radians(270.f), glm::vec3(1.0f, 0.f, 0.0f)));
@@ -398,10 +434,7 @@ void renderScene(GLFWwindow* window)
 	for (; it != circlePositions.end(); ++it) {
 		const glm::vec3& pos = it->second.first;
 		bool visited = it->second.second;
-
-		// Wybierz odpowiedni¹ teksturê w zale¿noœci od stanu okrêgu
-		auto& texture = visited ? textures.asteroid : textures.circle;
-
+		if (visited) texture = textures.circle_dark; else texture = textures.circle_bright;
 		// Rysuj okr¹g z odpowiedni¹ tekstur¹ i innym obrótem
 		drawObjectTexture(programDefault, contexts.circleContext, texture,
 			glm::translate(pos) * glm::scale(glm::vec3(15.f)) * glm::rotate(glm::radians(270.f), glm::vec3(1.0f, 0.f, 0.0f)) * glm::rotate(glm::radians(90.f), glm::vec3(0.f, 0.f, 1.0f)));
@@ -509,8 +542,8 @@ void initTextures() {
 	textures.asteroid = loadTextureSet("./textures/asteroid/asteroid_albedo.png", "./textures/asteroid/asteroid_normal.png", "./textures/planets/mars/mars_ao.jpg", "./textures/asteroid/asteroid_roughness.png", "./textures/asteroid/asteroid_metallic.png");
 	textures.barier = loadTextureSet("./textures/barier/barier_albedo.jpeg", "./textures/barier/barier_normal.png", "./textures/planets/barier/barier_ao.png", "./textures/barier/barier_roughness.jpeg", "./textures/barier/barier_metallic.png");
 	textures.laser = loadTextureSet("./textures/spaceship/laser_albedo.jpg","./textures/spaceship/laser_normal.png","./textures/spaceship/laser_ao.jpg","./textures/spaceship/laser_roughness.jpg","./textures/spaceship/laser_metallic.jpg");
-	textures.circle = loadTextureSet("./textures/circle/circle_albedo.jpg", "./textures/circle/circle_normal.png", "./textures/circle/circle_ao.jpg", "./textures/circle/circle_roughness.jpg", "./textures/circle/circle_metallic.jpg");
-
+	textures.circle_bright = loadTextureSet("./textures/circle/circle_albedo_bright.jpg", "./textures/circle/circle_normal.png", "./textures/circle/circle_ao.jpg", "./textures/circle/circle_roughness.jpg", "./textures/circle/circle_metallic.jpg");
+	textures.circle_dark = loadTextureSet("./textures/circle/circle_albedo_dark.jpg", "./textures/circle/circle_normal.png", "./textures/circle/circle_ao.jpg", "./textures/circle/circle_roughness.jpg", "./textures/circle/circle_metallic.jpg");
 
 	sprites.sprite_1 = Core::LoadTexture("./img/mission_board_1.png");
 	sprites.sprite_2 = Core::LoadTexture("./img/mission_board_2.png");
@@ -533,7 +566,7 @@ void initTextures() {
 void init(GLFWwindow* window)
 {
 	glfwSetFramebufferSizeCallback(window, framebuffer_size_callback);
-	//glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
+	glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
 	glfwGetCursorPos(window, &lastMouseX, &lastMouseY);
 
 	glEnable(GL_DEPTH_TEST);

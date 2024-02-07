@@ -46,7 +46,8 @@ struct Textures {
     TextureSet asteroid;
     TextureSet laser;
     TextureSet barier;
-    TextureSet circle;
+    TextureSet circle_bright;
+    TextureSet circle_dark;
 };
 
 struct ObjectInfo {
