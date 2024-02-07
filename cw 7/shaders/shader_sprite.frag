@@ -16,7 +16,7 @@ void main()
     FragColor = texColor;
 
     float brightness = dot(FragColor.rgb, vec3(0.2126, 0.7152, 0.0722));
-    if(brightness > 10.0f)
+    if(brightness > 0.9f)
         BrightColor = vec4(FragColor.rgb, 1.0);
 	else
 		BrightColor = vec4(0.0, 0.0, 0.0, 1.0);
