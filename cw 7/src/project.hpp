@@ -44,6 +44,9 @@ GLuint programSprite;
 GLuint programSkybox;
 GLuint skyboxTexture;
 
+GLuint programBlur;
+GLuint programBloomFinal;
+
 Core::Shader_Loader shaderLoader;
 Core::RenderSprite* renderSprite;
 Core::RenderSprite* renderSpriteEnd;
@@ -82,10 +85,14 @@ float deltaTime = 0.f;
 float spaceshipRadius = 0.5f;
 int trashDestroyed = 0;
 
-
-unsigned int bloomTexture;
-
-
+bool bloom = true;
+float exposure = 0.8f;
+unsigned int hdrFBO;
+unsigned int pingpongFBO[2];
+unsigned int pingpongColorbuffers[2];
+unsigned int colorBuffers[2];
+unsigned int quadVAO = 0;
+unsigned int quadVBO;
 
 void updateDeltaTime(float time) {
 	if (lastTime < 0) {
@@ -98,11 +105,39 @@ void updateDeltaTime(float time) {
 	lastTime = time;
 }
 
+void renderQuad()
+{
+	if (quadVAO == 0)
+	{
+		float quadVertices[] = {
+			// positions        // texture Coords
+			-1.0f,  1.0f, 0.0f, 0.0f, 1.0f,
+			-1.0f, -1.0f, 0.0f, 0.0f, 0.0f,
+			 1.0f,  1.0f, 0.0f, 1.0f, 1.0f,
+			 1.0f, -1.0f, 0.0f, 1.0f, 0.0f,
+		};
+		// setup plane VAO
+		glGenVertexArrays(1, &quadVAO);
+		glGenBuffers(1, &quadVBO);
+		glBindVertexArray(quadVAO);
+		glBindBuffer(GL_ARRAY_BUFFER, quadVBO);
+		glBufferData(GL_ARRAY_BUFFER, sizeof(quadVertices), &quadVertices, GL_STATIC_DRAW);
+		glEnableVertexAttribArray(0);
+		glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 5 * sizeof(float), (void*)0);
+		glEnableVertexAttribArray(1);
+		glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, 5 * sizeof(float), (void*)(3 * sizeof(float)));
+	}
+	glBindVertexArray(quadVAO);
+	glDrawArrays(GL_TRIANGLE_STRIP, 0, 4);
+	glBindVertexArray(0);
+}
+
 void drawObjectTexture(GLuint program,Core::RenderContext& context, TextureSet textures, glm::mat4 modelMatrix) {
 
 	glm::mat4 viewProjectionMatrix = Core::createPerspectiveMatrix(aspectRatio) * Core::createCameraMatrix(cameraDir, cameraPos);
 	glm::mat4 transformation = viewProjectionMatrix * modelMatrix;
 
+	glUseProgram(programDefault);
 	glUniformMatrix4fv(glGetUniformLocation(program, "transformation"), 1, GL_FALSE, (float*)&transformation);
 	glUniformMatrix4fv(glGetUniformLocation(program, "modelMatrix"), 1, GL_FALSE, (float*)&modelMatrix);
 	glUniform1f(glGetUniformLocation(program, "exposition"), exposition);
@@ -179,6 +214,7 @@ void drawPlanet(Core::RenderContext& context, TextureSet textures, float planetO
 	glm::mat4 viewProjectionMatrix = Core::createPerspectiveMatrix(aspectRatio) * Core::createCameraMatrix(cameraDir, cameraPos);
 	glm::mat4 transformation = viewProjectionMatrix * modelMatrix;
 
+	glUseProgram(programDefault);
 	glUniformMatrix4fv(glGetUniformLocation(programDefault, "transformation"), 1, GL_FALSE, (float*)&transformation);
 	glUniformMatrix4fv(glGetUniformLocation(programDefault, "modelMatrix"), 1, GL_FALSE, (float*)&modelMatrix);
 	glUniform1f(glGetUniformLocation(programDefault, "exposition"), exposition);
@@ -217,18 +253,6 @@ void drawSun(Core::RenderContext& context, glm::mat4 modelMatrix,TextureSet text
 	Core::DrawContext(context);
 
 }
-/*
-void renderBillboardText(const glm::vec3& position, const std::string& text) {
-	// You can replace this with your text rendering logic
-	glPushMatrix();
-	glTranslatef(position.x, position.y + 5.0f, position.z); // Adjust height as needed
-	glColor3f(1.0f, 1.0f, 1.0f); // Set text color
-	glRasterPos2f(0.0f, 0.0f);  // Set text position
-	for (const char& c : text) {
-		glutBitmapCharacter(GLUT_BITMAP_HELVETICA_12, c); // Use a suitable font
-	}
-	glPopMatrix();
-}*/
 
 bool checkCollision(glm::vec3 object1Pos, float object1Radius) {
 	float distance;
@@ -261,41 +285,14 @@ bool checkCollision(glm::vec3 object1Pos, float object1Radius) {
 	return false;
 }
 
-void initBloom() {
-	unsigned int postProcessingTexture;
-	GLFWmonitor* primaryMonitor = glfwGetPrimaryMonitor();
-	const GLFWvidmode* mode = glfwGetVideoMode(primaryMonitor);
-	const unsigned int height = mode->height;
-	const unsigned int width = mode->width;
-
-	glGenTextures(1, &postProcessingTexture);
-	glBindTexture(GL_TEXTURE_2D, postProcessingTexture);
-	glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB16F, width, height, 0, GL_RGB, GL_UNSIGNED_BYTE, NULL);
-	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
-	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
-	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
-	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
-	glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, postProcessingTexture, 0);
-	
-	
-	//unsigned int bloomTexture;
-	glGenTextures(1, &bloomTexture);
-	glBindTexture(GL_TEXTURE_2D, bloomTexture);
-	glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB16F, width, height, 0, GL_RGB, GL_UNSIGNED_BYTE, NULL);
-	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
-	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
-	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
-	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
-	glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT1, GL_TEXTURE_2D, bloomTexture, 0);
-
-	unsigned int attachments[2] = { GL_COLOR_ATTACHMENT0, GL_COLOR_ATTACHMENT1 };
-	glDrawBuffers(2, attachments);
-}
-
 void renderScene(GLFWwindow* window)
 {
 	glClearColor(0.0f, 0.0f, 0.15f, 1.0f);
 	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+
+	glBindFramebuffer(GL_FRAMEBUFFER, hdrFBO);
+	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+
 	glm::mat4 transformation;
 	float time = glfwGetTime();
 	updateDeltaTime(time);
@@ -303,14 +300,10 @@ void renderScene(GLFWwindow* window)
 	Core::DrawSkybox(programSkybox, contexts.skyboxContext, skyboxTexture, cameraDir, cameraPos, aspectRatio);
 	glClear(GL_DEPTH_BUFFER_BIT);
 
-	glUseProgram(programSun);
-
 	// S£OÑCE
 	glm::vec3 sunPosition = glm::vec3(0, 0, 0);
 	planets.planetsProperties["Sun"] = { sunPosition, 30.f };
 	drawSun(contexts.sphereContext, glm::scale(glm::vec3(30.f)) * glm::translate(sunPosition), textures.sun);
-
-	glUseProgram(programDefault);
 
 	// UK£AD S£ONECZNY - PLANETY (NA RAZIE BEZ KSIÊ¯YCA)
 	drawPlanet(contexts.sphereContext, textures.planets.mercury, 15.0f * 5, 0.2f, time, glm::vec3(0.5 * 9), 1 * 9, std::string("Mercury"));
@@ -322,9 +315,6 @@ void renderScene(GLFWwindow* window)
 	drawPlanet(contexts.sphereContext, textures.planets.uran, 55.0f * 5, 0.05f, time, glm::vec3(1.6f * 9), 2.5 * 9, std::string("Uran"));
 	drawPlanet(contexts.sphereContext, textures.planets.neptune, 60.0f * 5, 0.025f, time, glm::vec3(1.8f * 9), 2.5 * 9, std::string("Neptun"));
 
-	/*for (const auto& planet : planets.planetsProperties) {
-		renderBillboardText(planet.second.coordinates, "planeta");
-	}*/
 	//LICZBY LOSOWE
 	glm::vec3 initialAsteroidPosition(0.f, 40.f, 0.f);
 	float offset = sin(time) * 2.0f;
@@ -402,13 +392,11 @@ void renderScene(GLFWwindow* window)
 
 	if (!hideInstruction)
 	{
-		glUseProgram(programSprite);
 		renderSpriteStart->DrawSprite(programSprite, 740.0f, 880.0f);
 	}
 
 	if (showMissions)
 	{
-		glUseProgram(programSprite);
 		renderSprite->DrawSprite(programSprite, 740.0f, 580.0f);
 	}
 
@@ -419,12 +407,37 @@ void renderScene(GLFWwindow* window)
 	}
 	if (missionsComplete)
 	{
-		glUseProgram(programSprite);
 		renderSpriteEnd->DrawSprite(programSprite, 740.0f, 580.0f);
 	}
 
-	
-	glBindTexture(GL_TEXTURE_2D, bloomTexture);
+	glBindFramebuffer(GL_FRAMEBUFFER, 0);
+
+	bool horizontal = true, first_iteration = true;
+	unsigned int amount = 10;
+	glUseProgram(programBlur);
+	for (unsigned int i = 0; i < amount; i++)
+	{
+		glBindFramebuffer(GL_FRAMEBUFFER, pingpongFBO[horizontal]);
+		glUniform1i(glGetUniformLocation(programBlur, "horizontal"), horizontal);
+		glActiveTexture(GL_TEXTURE0);
+		glBindTexture(GL_TEXTURE_2D, first_iteration ? colorBuffers[1] : pingpongColorbuffers[!horizontal]);  // bind texture of other framebuffer (or scene if first iteration)
+		renderQuad();
+		horizontal = !horizontal;
+		if (first_iteration)
+			first_iteration = false;
+	}
+	glBindFramebuffer(GL_FRAMEBUFFER, 0);
+
+	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+	glUseProgram(programBloomFinal);
+	glActiveTexture(GL_TEXTURE0);
+	glBindTexture(GL_TEXTURE_2D, colorBuffers[0]);
+	glActiveTexture(GL_TEXTURE1);
+	glBindTexture(GL_TEXTURE_2D, pingpongColorbuffers[!horizontal]);
+	glUniform1i(glGetUniformLocation(programBloomFinal, "bloom"), bloom);
+	glUniform1f(glGetUniformLocation(programBloomFinal, "exposure"), exposure);
+	renderQuad();
+
 	glUseProgram(0);
 	glfwSwapBuffers(window);
 }
@@ -433,7 +446,6 @@ void framebuffer_size_callback(GLFWwindow* window, int width, int height)
 {
 	aspectRatio = width / float(height);
 	glViewport(0, 0, width, height);
-	
 	std::cout << width << height;
 }
 
@@ -492,10 +504,65 @@ void initTextures() {
 	skyboxTexture = Core::LoadSkybox(skyboxFilepaths);
 }
 
+void initBloom() {
+	glGenFramebuffers(1, &hdrFBO);
+	glBindFramebuffer(GL_FRAMEBUFFER, hdrFBO);
+	// create 2 floating point color buffers (1 for normal rendering, other for brightness threshold values)
+	glGenTextures(2, colorBuffers);
+	for (unsigned int i = 0; i < 2; i++)
+	{
+		glBindTexture(GL_TEXTURE_2D, colorBuffers[i]);
+		glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA16F, 1920, 1080, 0, GL_RGBA, GL_FLOAT, NULL);
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);  // we clamp to the edge as the blur filter would otherwise sample repeated texture values!
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+		// attach texture to framebuffer
+		glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0 + i, GL_TEXTURE_2D, colorBuffers[i], 0);
+	}
+	// create and attach depth buffer (renderbuffer)
+	unsigned int rboDepth;
+	glGenRenderbuffers(1, &rboDepth);
+	glBindRenderbuffer(GL_RENDERBUFFER, rboDepth);
+	glRenderbufferStorage(GL_RENDERBUFFER, GL_DEPTH_COMPONENT, 1920, 1080);
+	glFramebufferRenderbuffer(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, GL_RENDERBUFFER, rboDepth);
+	// tell OpenGL which color attachments we'll use (of this framebuffer) for rendering 
+	unsigned int attachments[2] = { GL_COLOR_ATTACHMENT0, GL_COLOR_ATTACHMENT1 };
+	glDrawBuffers(2, attachments);
+	// finally check if framebuffer is complete
+	if (glCheckFramebufferStatus(GL_FRAMEBUFFER) != GL_FRAMEBUFFER_COMPLETE)
+		std::cout << "Framebuffer not complete!" << std::endl;
+	glBindFramebuffer(GL_FRAMEBUFFER, 0);
+
+	glGenFramebuffers(2, pingpongFBO);
+	glGenTextures(2, pingpongColorbuffers);
+	for (unsigned int i = 0; i < 2; i++)
+	{
+		glBindFramebuffer(GL_FRAMEBUFFER, pingpongFBO[i]);
+		glBindTexture(GL_TEXTURE_2D, pingpongColorbuffers[i]);
+		glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA16F, 1920, 1080, 0, GL_RGBA, GL_FLOAT, NULL);
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE); // we clamp to the edge as the blur filter would otherwise sample repeated texture values!
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+		glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, pingpongColorbuffers[i], 0);
+		// also check if framebuffers are complete (no need for depth buffer)
+		if (glCheckFramebufferStatus(GL_FRAMEBUFFER) != GL_FRAMEBUFFER_COMPLETE)
+			std::cout << "Framebuffer not complete!" << std::endl;
+	}
+	glUseProgram(programBlur);
+	glUniform1i(glGetUniformLocation(programBlur, "image"), 0);
+
+	glUseProgram(programBloomFinal);
+	glUniform1i(glGetUniformLocation(programBloomFinal, "scene"), 0);
+	glUniform1i(glGetUniformLocation(programBloomFinal, "bloomBlur"), 1);
+
+}
+
 void init(GLFWwindow* window)
 {
 	glfwSetFramebufferSizeCallback(window, framebuffer_size_callback);
-	//glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
+	glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
 	glfwGetCursorPos(window, &lastMouseX, &lastMouseY);
 
 	glEnable(GL_DEPTH_TEST);
@@ -504,6 +571,9 @@ void init(GLFWwindow* window)
 	programSun = shaderLoader.CreateProgram("shaders/shader_sun.vert", "shaders/shader_sun.frag");
 	programSprite = shaderLoader.CreateProgram("shaders/shader_sprite.vert", "shaders/shader_sprite.frag");
 	programSkybox = shaderLoader.CreateProgram("shaders/shader_skybox.vert", "shaders/shader_skybox.frag");
+
+	programBlur = shaderLoader.CreateProgram("shaders/shader_blur.vert", "shaders/shader_blur.frag");
+	programBloomFinal = shaderLoader.CreateProgram("shaders/shader_bloom_final.vert", "shaders/shader_bloom_final.frag");
 
 	loadModelToContext("./models/sphere.obj", contexts.sphereContext);
 	loadModelToContext("./models/spaceship.fbx", contexts.shipContext);
@@ -515,7 +585,7 @@ void init(GLFWwindow* window)
 	loadModelToContext("./models/barier.fbx", contexts.barierContext);
 
 	initTextures();
-	initBloom();
+
 	renderSprite = new Core::RenderSprite();
 	renderSpriteEnd = new Core::RenderSprite();
 	renderSpriteStart = new Core::RenderSprite();
@@ -523,6 +593,8 @@ void init(GLFWwindow* window)
 	renderSprite->UpdateSprite(sprites.sprite_1);
 	renderSpriteEnd->UpdateSprite(sprites.sprite_end);
 	renderSpriteStart->UpdateSprite(sprites.sprite_start);
+		
+	initBloom();
 }
 
 void shutdown(GLFWwindow* window)

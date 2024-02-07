@@ -1,4 +1,6 @@
  #version 430 core
+layout (location = 0) out vec4 FragColor;
+layout (location = 1) out vec4 BrightColor;
 
 float AMBIENT = 0.08;
 float PI = 3.14;
@@ -24,8 +26,6 @@ uniform float exposition;
 in vec3 vecNormal;
 in vec3 worldPos;
 in vec2 vecTex;
-
-out vec4 outColor;
 
 in vec3 viewDirTS;
 in vec3 lightDirTS;
@@ -118,8 +118,14 @@ void main(){
 
     float angle_atenuation = clamp((dot(-normalize(spotlightPos-worldPos),spotlightConeDir)-0.5)*3,0,1);
 	attenuatedlightColor = angle_atenuation*spotlightColor/pow(length(spotlightPos-worldPos),2);
-    attenuatedlightColor *= 1180.0;
+    attenuatedlightColor *= 900.0;
 	ilumination=ilumination+PBRLight(spotlightDir,attenuatedlightColor,normal,viewDir);
 
-    outColor = vec4(vec3(1.0) - exp(-ilumination * exposition), 1);
+    FragColor = vec4(vec3(1.0) - exp(-ilumination * exposition), 1);
+
+    float brightness = dot(FragColor.rgb, vec3(0.2126, 0.7152, 0.0722));
+    if(brightness > 0.9f)
+        BrightColor = vec4(FragColor.rgb, 1.0);
+	else
+		BrightColor = vec4(0.0, 0.0, 0.0, 1.0);
 }

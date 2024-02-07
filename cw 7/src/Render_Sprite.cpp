@@ -23,6 +23,8 @@ void Core::RenderSprite::DrawSprite(GLuint program, float spriteWidth, float spr
     model = glm::translate(model, glm::vec3((screenWidth - spriteWidth) / 2.0f, (screenHeight - spriteHeight) / 2.0f, 0.0f));
     model = glm::scale(model, glm::vec3(glm::vec2(spriteWidth, spriteHeight), 1.0f));
 
+    glUseProgram(program);
+
     glUniformMatrix4fv(glGetUniformLocation(program, "projection"), 1, GL_FALSE, (float*)&projection);
     glUniformMatrix4fv(glGetUniformLocation(program, "model"), 1, GL_FALSE, (float*)&model);
 

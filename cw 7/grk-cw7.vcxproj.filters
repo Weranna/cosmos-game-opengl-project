@@ -123,5 +123,17 @@
     </None>
     <None Include="models\asteroid_barier.fbx" />
     <None Include="models\barier.fbx" />
+    <None Include="shaders\shader_bloom_final.frag">
+      <Filter>Shader Files</Filter>
+    </None>
+    <None Include="shaders\shader_bloom_final.vert">
+      <Filter>Shader Files</Filter>
+    </None>
+    <None Include="shaders\shader_blur.frag">
+      <Filter>Shader Files</Filter>
+    </None>
+    <None Include="shaders\shader_blur.vert">
+      <Filter>Shader Files</Filter>
+    </None>
   </ItemGroup>
 </Project>

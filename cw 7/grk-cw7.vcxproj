@@ -41,6 +41,10 @@
   <ItemGroup>
     <None Include="models\asteroid_barier.fbx" />
     <None Include="models\barier.fbx" />
+    <None Include="shaders\shader_bloom_final.frag" />
+    <None Include="shaders\shader_bloom_final.vert" />
+    <None Include="shaders\shader_blur.frag" />
+    <None Include="shaders\shader_blur.vert" />
     <None Include="shaders\shader_default.frag" />
     <None Include="shaders\shader_default.vert" />
     <None Include="shaders\shader_skybox.frag" />
