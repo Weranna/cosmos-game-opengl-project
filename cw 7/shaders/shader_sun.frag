@@ -4,7 +4,7 @@ layout (location = 0) out vec4 FragColor;
 layout (location = 1) out vec4 BrightColor;
 
 float AMBIENT = 0.3;
-float DIFFUSE_INTENSITY = 2.0;
+float DIFFUSE_INTENSITY = 0.2;
 
 uniform vec3 lightDir;
 uniform sampler2D sunAlbedo;
@@ -20,7 +20,7 @@ void main()
 
     vec3 normalFromMap = normalize(texture2D(sunNormal, vecTex).xyz * 2.0 - 1.0);
 
-    float diffuse = max(0, dot(normalFromMap, lightDir)); // Notice the negative sign
+    float diffuse = max(0, dot(normalFromMap, lightDir));
     diffuse = pow(diffuse, DIFFUSE_INTENSITY); // Apply intensity control
 
     vec4 albedoColor = texture2D(sunAlbedo, vecTex);
