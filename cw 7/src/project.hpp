@@ -83,6 +83,9 @@ float spaceshipRadius = 0.5f;
 int trashDestroyed = 0;
 
 
+unsigned int bloomTexture;
+
+
 
 void updateDeltaTime(float time) {
 	if (lastTime < 0) {
@@ -258,6 +261,37 @@ bool checkCollision(glm::vec3 object1Pos, float object1Radius) {
 	return false;
 }
 
+void initBloom() {
+	unsigned int postProcessingTexture;
+	GLFWmonitor* primaryMonitor = glfwGetPrimaryMonitor();
+	const GLFWvidmode* mode = glfwGetVideoMode(primaryMonitor);
+	const unsigned int height = mode->height;
+	const unsigned int width = mode->width;
+
+	glGenTextures(1, &postProcessingTexture);
+	glBindTexture(GL_TEXTURE_2D, postProcessingTexture);
+	glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB16F, width, height, 0, GL_RGB, GL_UNSIGNED_BYTE, NULL);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+	glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, postProcessingTexture, 0);
+	
+	
+	//unsigned int bloomTexture;
+	glGenTextures(1, &bloomTexture);
+	glBindTexture(GL_TEXTURE_2D, bloomTexture);
+	glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB16F, width, height, 0, GL_RGB, GL_UNSIGNED_BYTE, NULL);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+	glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT1, GL_TEXTURE_2D, bloomTexture, 0);
+
+	unsigned int attachments[2] = { GL_COLOR_ATTACHMENT0, GL_COLOR_ATTACHMENT1 };
+	glDrawBuffers(2, attachments);
+}
+
 void renderScene(GLFWwindow* window)
 {
 	glClearColor(0.0f, 0.0f, 0.15f, 1.0f);
@@ -388,6 +422,9 @@ void renderScene(GLFWwindow* window)
 		glUseProgram(programSprite);
 		renderSpriteEnd->DrawSprite(programSprite, 740.0f, 580.0f);
 	}
+
+	
+	glBindTexture(GL_TEXTURE_2D, bloomTexture);
 	glUseProgram(0);
 	glfwSwapBuffers(window);
 }
@@ -396,6 +433,8 @@ void framebuffer_size_callback(GLFWwindow* window, int width, int height)
 {
 	aspectRatio = width / float(height);
 	glViewport(0, 0, width, height);
+	
+	std::cout << width << height;
 }
 
 // ³aduje tekstury
@@ -456,7 +495,7 @@ void initTextures() {
 void init(GLFWwindow* window)
 {
 	glfwSetFramebufferSizeCallback(window, framebuffer_size_callback);
-	glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
+	//glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
 	glfwGetCursorPos(window, &lastMouseX, &lastMouseY);
 
 	glEnable(GL_DEPTH_TEST);
@@ -476,6 +515,7 @@ void init(GLFWwindow* window)
 	loadModelToContext("./models/barier.fbx", contexts.barierContext);
 
 	initTextures();
+	initBloom();
 	renderSprite = new Core::RenderSprite();
 	renderSpriteEnd = new Core::RenderSprite();
 	renderSpriteStart = new Core::RenderSprite();
