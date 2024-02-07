@@ -466,7 +466,7 @@ void renderScene(GLFWwindow* window)
 	glBindFramebuffer(GL_FRAMEBUFFER, 0);
 
 	bool horizontal = true, first_iteration = true;
-	unsigned int amount = 10;
+	unsigned int amount = 20;
 	glUseProgram(programBlur);
 	for (unsigned int i = 0; i < amount; i++)
 	{
