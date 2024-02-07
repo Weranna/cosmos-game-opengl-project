@@ -5,6 +5,7 @@
 #include <iostream>
 #include <cmath>
 
+
 #include "Shader_Loader.h"
 #include "Render_Utils.h"
 #include "Render_Sprite.h"
@@ -96,6 +97,11 @@ int circleVisited = 0;
 
 float halfOuterSize = 25.0f;  // Po³owa d³ugoœci boku zewnêtrznej ramy
 float halfInnerSize = 15.0f;
+
+
+unsigned int bloomTexture;
+
+
 
 void updateDeltaTime(float time) {
 	if (lastTime < 0) {
@@ -221,6 +227,18 @@ void drawSun(Core::RenderContext& context, glm::mat4 modelMatrix,TextureSet text
 	Core::DrawContext(context);
 
 }
+/*
+void renderBillboardText(const glm::vec3& position, const std::string& text) {
+	// You can replace this with your text rendering logic
+	glPushMatrix();
+	glTranslatef(position.x, position.y + 5.0f, position.z); // Adjust height as needed
+	glColor3f(1.0f, 1.0f, 1.0f); // Set text color
+	glRasterPos2f(0.0f, 0.0f);  // Set text position
+	for (const char& c : text) {
+		glutBitmapCharacter(GLUT_BITMAP_HELVETICA_12, c); // Use a suitable font
+	}
+	glPopMatrix();
+}*/
 
 bool checkCollision(glm::vec3 object1Pos, float object1Radius) {
 	float distance;
@@ -259,6 +277,37 @@ bool checkCollision(glm::vec3 object1Pos, float object1Radius) {
 	return false;
 }
 
+void initBloom() {
+	unsigned int postProcessingTexture;
+	GLFWmonitor* primaryMonitor = glfwGetPrimaryMonitor();
+	const GLFWvidmode* mode = glfwGetVideoMode(primaryMonitor);
+	const unsigned int height = mode->height;
+	const unsigned int width = mode->width;
+
+	glGenTextures(1, &postProcessingTexture);
+	glBindTexture(GL_TEXTURE_2D, postProcessingTexture);
+	glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB16F, width, height, 0, GL_RGB, GL_UNSIGNED_BYTE, NULL);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+	glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, postProcessingTexture, 0);
+	
+	
+	//unsigned int bloomTexture;
+	glGenTextures(1, &bloomTexture);
+	glBindTexture(GL_TEXTURE_2D, bloomTexture);
+	glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB16F, width, height, 0, GL_RGB, GL_UNSIGNED_BYTE, NULL);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+	glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT1, GL_TEXTURE_2D, bloomTexture, 0);
+
+	unsigned int attachments[2] = { GL_COLOR_ATTACHMENT0, GL_COLOR_ATTACHMENT1 };
+	glDrawBuffers(2, attachments);
+}
+
 void renderScene(GLFWwindow* window)
 {
 	glClearColor(0.0f, 0.0f, 0.15f, 1.0f);
@@ -289,6 +338,10 @@ void renderScene(GLFWwindow* window)
 	drawPlanet(contexts.sphereContext, textures.planets.uran, 55.0f * 5, 0.05f, time, glm::vec3(1.6f * 9), 2.5 * 9, std::string("Uran"));
 	drawPlanet(contexts.sphereContext, textures.planets.neptune, 60.0f * 5, 0.025f, time, glm::vec3(1.8f * 9), 2.5 * 9, std::string("Neptun"));
 
+	/*for (const auto& planet : planets.planetsProperties) {
+		renderBillboardText(planet.second.coordinates, "planeta");
+	}*/
+	//LICZBY LOSOWE
 	glm::vec3 initialAsteroidPosition(0.f, 40.f, 0.f);
 	float offset = sin(time) * 2.0f;
 
@@ -405,6 +458,9 @@ void renderScene(GLFWwindow* window)
 		glUseProgram(programSprite);
 		renderSpriteEnd->DrawSprite(programSprite, 740.0f, 580.0f);
 	}
+
+	
+	glBindTexture(GL_TEXTURE_2D, bloomTexture);
 	glUseProgram(0);
 	glfwSwapBuffers(window);
 }
@@ -413,6 +469,8 @@ void framebuffer_size_callback(GLFWwindow* window, int width, int height)
 {
 	aspectRatio = width / float(height);
 	glViewport(0, 0, width, height);
+	
+	std::cout << width << height;
 }
 
 // ³aduje tekstury
@@ -475,7 +533,7 @@ void initTextures() {
 void init(GLFWwindow* window)
 {
 	glfwSetFramebufferSizeCallback(window, framebuffer_size_callback);
-	glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
+	//glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
 	glfwGetCursorPos(window, &lastMouseX, &lastMouseY);
 
 	glEnable(GL_DEPTH_TEST);
@@ -496,6 +554,7 @@ void init(GLFWwindow* window)
 	loadModelToContext("./models/circle.dae", contexts.circleContext);
 
 	initTextures();
+	initBloom();
 	renderSprite = new Core::RenderSprite();
 	renderSpriteEnd = new Core::RenderSprite();
 	renderSpriteStart = new Core::RenderSprite();
