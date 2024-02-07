@@ -437,7 +437,7 @@ void renderScene(GLFWwindow* window)
 			laser.position += laser.direction * laserSpeed * deltaTime;
 
 			glm::mat4 laserModelMatrix = glm::translate(laser.position) * glm::scale(glm::vec3(0.0003));
-			drawObjectTexture(programDefault, contexts.laserContext, textures.laser, laserModelMatrix);
+			drawSun(contexts.laserContext, laserModelMatrix, textures.laser); 
 			if(checkCollision(laser.position,0.5f)) laser.isActive = false;
 		}
 		else laser.isActive = false;
@@ -537,7 +537,8 @@ void initTextures() {
 	textures.trash2 = loadTextureSet("./textures/trash/trash2_albedo.jpg", "./textures/trash/trash2_normal.png", "./textures/trash/trash2_AO.jpg", "./textures/trash/trash2_roughness.jpg", "./textures/trash/trash2_metallic.jpg");
 	textures.asteroid = loadTextureSet("./textures/asteroid/asteroid_albedo.png", "./textures/asteroid/asteroid_normal.png", "./textures/planets/mars/mars_ao.jpg", "./textures/asteroid/asteroid_roughness.png", "./textures/asteroid/asteroid_metallic.png");
 	textures.barier = loadTextureSet("./textures/barier/barier_albedo.jpeg", "./textures/barier/barier_normal.png", "./textures/planets/barier/barier_ao.png", "./textures/barier/barier_roughness.jpeg", "./textures/barier/barier_metallic.png");
-	textures.laser = loadTextureSet("./textures/spaceship/laser_albedo.jpg","./textures/spaceship/laser_normal.png","./textures/spaceship/laser_ao.jpg","./textures/spaceship/laser_roughness.jpg","./textures/spaceship/laser_metallic.jpg");
+	textures.laser.albedo = Core::LoadTexture("./textures/spaceship/laser_albedo.jpg");
+	textures.laser.normal = Core::LoadTexture("./textures/spaceship/laser_normal.png");
 	textures.circle_bright = loadTextureSet("./textures/circle/circle_albedo_bright.jpg", "./textures/circle/circle_normal.png", "./textures/circle/circle_ao.jpg", "./textures/circle/circle_roughness.jpg", "./textures/circle/circle_metallic.jpg");
 	textures.circle_dark = loadTextureSet("./textures/circle/circle_albedo_dark.jpg", "./textures/circle/circle_normal.png", "./textures/circle/circle_ao.jpg", "./textures/circle/circle_roughness.jpg", "./textures/circle/circle_metallic.jpg");
 
