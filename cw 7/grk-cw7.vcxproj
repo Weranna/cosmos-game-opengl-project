@@ -45,6 +45,8 @@
     <None Include="shaders\shader_bloom_final.vert" />
     <None Include="shaders\shader_blur.frag" />
     <None Include="shaders\shader_blur.vert" />
+    <None Include="shaders\shader_circle.frag" />
+    <None Include="shaders\shader_circle.vert" />
     <None Include="shaders\shader_default.frag" />
     <None Include="shaders\shader_default.vert" />
     <None Include="shaders\shader_skybox.frag" />

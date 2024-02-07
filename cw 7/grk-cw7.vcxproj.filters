@@ -135,5 +135,7 @@
     <None Include="shaders\shader_blur.vert">
       <Filter>Shader Files</Filter>
     </None>
+    <None Include="shaders\shader_circle.vert" />
+    <None Include="shaders\shader_circle.frag" />
   </ItemGroup>
 </Project>

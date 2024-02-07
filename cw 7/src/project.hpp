@@ -17,7 +17,7 @@
 #include <assimp/postprocess.h>
 #include <string>
 #include <random>
-#include <cmath>
+#include <chrono>
 
 std::map<std::string, std::map<int, bool>> trashDisplayInfoMap = {
 	{"Mercury", {{0, true}, {1, true}, {2, true}, {3, true}}},
@@ -30,7 +30,18 @@ std::map<std::string, std::map<int, bool>> trashDisplayInfoMap = {
 	{"Neptun", {{0, true}, {1, true}, {2, true}, {3, true}}},
 };
 
-std::vector<std::vector<glm::vec3>> asteroidPositions(3, std::vector<glm::vec3>(8, glm::vec3(0.f, 0.f, 0.f)));
+std::vector<std::vector<glm::vec3>> asteroidPositions(4, std::vector<glm::vec3>(8, glm::vec3(0.f, 0.f, 0.f)));
+
+std::map<int, std::pair<glm::vec3, bool>> circlePositions{
+		{1, {glm::vec3(-58.f, -50.f, 30.f), false}},
+		{2, {glm::vec3(-58.f, -50.f, -30.f), false}},
+		{3, {glm::vec3(58.f, -50.f, 30.f), false}},
+		{4, {glm::vec3(58.f, -50.f, -30.f), false}},
+		{5, {glm::vec3(30.f, -50.f, 58.f), false}},
+		{6, {glm::vec3(-30.f, -50.f, 58.f), false}},
+		{7, {glm::vec3(30.f, -50.f, -58.f), false}},
+		{8, {glm::vec3(-30.f, -50.f, -58.f), false}}
+};
 
 Textures textures;
 TextureSprite sprites;
@@ -65,6 +76,7 @@ float spotlightPhi = 3.14 / 4;
 bool showMissions = false;
 bool hideInstruction = false;
 bool missionsComplete = false;
+bool raceCompleted = false;
 
 float aspectRatio = 1.f;
 float exposition = 1.f;
@@ -84,6 +96,12 @@ float deltaTime = 0.f;
 
 float spaceshipRadius = 0.5f;
 int trashDestroyed = 0;
+int circleVisited = 0;
+
+unsigned int bloomTexture;
+
+std::chrono::time_point<std::chrono::steady_clock> start_time;
+std::chrono::time_point<std::chrono::steady_clock> end_time;
 
 bool bloom = true;
 float exposure = 0.8f;
@@ -190,14 +208,8 @@ void drawTrash(float planetX, float planetZ, float time, float orbitRadius, glm:
 
 		planets.trashProperties[planetName].push_back({ trashPos2,  2.f });
 
-		if (trashDisplayInfoMap[planetName][id])
-		{
-			drawObjectTexture(programDefault, contexts.trash1Context, textures.trash1, modelMatrix1);
-		}
-
-		if (trashDisplayInfoMap[planetName][id + 1]) {
-			drawObjectTexture(programDefault, contexts.trash2Context, textures.trash2, modelMatrix2);
-		}
+		if (trashDisplayInfoMap[planetName][id]) drawObjectTexture(programDefault, contexts.trash1Context, textures.trash1, modelMatrix1);
+		if (trashDisplayInfoMap[planetName][id + 1]) drawObjectTexture(programDefault, contexts.trash2Context, textures.trash2, modelMatrix2);
 
 		id=id+2;
 	}
@@ -259,16 +271,12 @@ bool checkCollision(glm::vec3 object1Pos, float object1Radius) {
 
 	for (const auto& pair : planets.planetsProperties) {
 			distance = glm::length(object1Pos - pair.second.coordinates);
-			if (distance < (object1Radius + pair.second.orbit)) {
-				return true;
-			}
+			if (distance < (object1Radius + pair.second.orbit)) return true;
 		}
 	for (const auto& row : asteroidPositions) {
 		for (const auto& asteroidPos : row) {
 			distance = glm::length(object1Pos - asteroidPos);
-			if (distance < (object1Radius + 1.5f)) {
-				return true;
-			}
+			if (distance < (object1Radius + 1.5f)) return true;
 		}
 	}
 	for ( auto& planetEntry : planets.trashProperties) {
@@ -277,11 +285,36 @@ bool checkCollision(glm::vec3 object1Pos, float object1Radius) {
 			distance = glm::length(object1Pos - trashInfo.coordinates);
 			if (distance < (object1Radius + trashInfo.orbit)) {
 				trashInfo.destroyed = true;
-				if (trashDestroyed == 10) std::cout << "QUEST COMPLETED";
 				return true;
 			}
 		}
 	}
+	for (auto& pair : circlePositions) {
+		glm::vec3& position = pair.second.first;
+		bool& visited = pair.second.second;
+		float distance = glm::length(object1Pos - position);
+		if (!visited && distance < (object1Radius + 5.f)) {
+			visited = true;
+			circleVisited++;
+			if (circleVisited == 1) start_time = std::chrono::steady_clock::now();
+			if (circleVisited == 8) {
+				end_time = std::chrono::steady_clock::now();
+				std::chrono::duration<double> elapsed_seconds = end_time - start_time;
+				if (elapsed_seconds.count() < 15.0) {
+					raceCompleted = true;
+					std::cout << "skonczyles wyscig";
+				}
+				else
+				{
+					circleVisited = 0;
+					for (auto& pair : circlePositions) {
+						pair.second.second = false;
+					}
+				}
+			}
+		}
+	}
+
 	return false;
 }
 
@@ -322,16 +355,13 @@ void renderScene(GLFWwindow* window)
 	std::default_random_engine generator; // Inicjalizacja generatora liczb losowych
 	std::uniform_real_distribution<float> distribution(-1.0f, 1.0f); // Zakres losowych wartoœci od -1.0 do 1.0
 
-	// W pêtli asteroidy
+	//asteroidy
 	for (int row = 0; row < 3; ++row)
 	{
 		for (int col = 0; col < 8; ++col)
 		{
 			glm::vec3 position = initialAsteroidPosition + glm::vec3(col * 10.f, 0.f, row * 10.f);
-			if (row % 2 == 1)
-			{
-				position.x += 10.f * 0.5f;
-			}
+			if (row % 2 == 1) position.x += 10.f * 0.5f;
 			position.x += offset;
 
 			// Dodaj losowoœæ do pozycji asteroidy
@@ -348,12 +378,62 @@ void renderScene(GLFWwindow* window)
 			drawObjectTexture(programDefault, contexts.asteroidContext, textures.asteroid, transformation);
 		}
 	}
+
+	glm::vec3 position;
+
+	position = glm::vec3(-58.f + 3 * sin(time*2), -50.f, -8.f);
+	position.z += 15.f * cos(time*2);
+	transformation = glm::translate(position) * glm::rotate(2.f * time, glm::vec3(0.0f, 1.0f, 0.0f)) * glm::rotate(0.5f * time, glm::vec3(1.0f, 0.0f, 0.0f))*glm::scale(glm::vec3(2.f));
+	drawObjectTexture(programDefault, contexts.asteroidContext, textures.asteroid, transformation);
+	asteroidPositions[3][0] = position;
+
+	position = glm::vec3(58.f + 3 * sin(time * 2), -50.f, -8.f);
+	position.z += 15.f * cos(time * 2);
+	transformation = glm::translate(position) * glm::rotate(2.f * time, glm::vec3(0.0f, 1.0f, 0.0f)) * glm::rotate(0.5f * time, glm::vec3(1.0f, 0.0f, 0.0f)) * glm::scale(glm::vec3(2.f));
+	drawObjectTexture(programDefault, contexts.asteroidContext, textures.asteroid, transformation);
+	asteroidPositions[3][1] = position;
+
+	position = glm::vec3(-8.f, -50.f, 58.f + 3 * sin(time * 2));
+	position.x += 15.f * cos(time * 2);
+	transformation = glm::translate(position) * glm::rotate(2.f * time, glm::vec3(0.0f, 1.0f, 0.0f)) * glm::rotate(0.5f * time, glm::vec3(1.0f, 0.0f, 0.0f)) * glm::scale(glm::vec3(2.f));
+	drawObjectTexture(programDefault, contexts.asteroidContext, textures.asteroid, transformation);
+	asteroidPositions[3][2] = position;
+
+	position = glm::vec3(-8.f, -50.f, -58.f + 3 * sin(time * 2));
+	position.x += 15.f * cos(time * 2);
+	transformation = glm::translate(position) * glm::rotate(2.f * time, glm::vec3(0.0f, 1.0f, 0.0f)) * glm::rotate(0.5f * time, glm::vec3(1.0f, 0.0f, 0.0f)) * glm::scale(glm::vec3(2.f));
+	drawObjectTexture(programDefault, contexts.asteroidContext, textures.asteroid, transformation);
+	asteroidPositions[3][3] = position;
+
 	// tor wyœcigowy
 	transformation = glm::translate(glm::vec3(0.f, -50.f, 0.f))*glm::scale( glm::vec3(50.f))* glm::rotate(glm::radians(270.f), glm::vec3(1.0f, 0.f, 0.0f));
 	drawObjectTexture(programDefault, contexts.barierContext, textures.barier, transformation);
 	transformation = glm::translate(glm::vec3(0.f, -50.f, 0.f)) * glm::scale(glm::vec3(70.f)) * glm::rotate(glm::radians(270.f), glm::vec3(1.0f, 0.f, 0.0f));
 	drawObjectTexture(programDefault, contexts.barierContext, textures.barier, transformation);
 
+	TextureSet texture;
+	bool visited;
+
+	// Rysuj pierwsze cztery okrêgi
+	auto it = circlePositions.begin();
+	for (int i = 0; i < 4; ++i, ++it) {
+		const glm::vec3& pos = it->second.first;
+		bool visited = it->second.second;
+		if (visited) texture = textures.circle_dark; else texture = textures.circle_bright;
+		// Rysuj okr¹g z odpowiedni¹ tekstur¹ i obrótem
+		drawObjectTexture(programDefault, contexts.circleContext, texture,
+			glm::translate(pos) * glm::scale(glm::vec3(15.f)) * glm::rotate(glm::radians(270.f), glm::vec3(1.0f, 0.f, 0.0f)));
+	}
+
+	// Rysuj kolejne cztery okrêgi
+	for (; it != circlePositions.end(); ++it) {
+		const glm::vec3& pos = it->second.first;
+		bool visited = it->second.second;
+		if (visited) texture = textures.circle_dark; else texture = textures.circle_bright;
+		// Rysuj okr¹g z odpowiedni¹ tekstur¹ i innym obrótem
+		drawObjectTexture(programDefault, contexts.circleContext, texture,
+			glm::translate(pos) * glm::scale(glm::vec3(15.f)) * glm::rotate(glm::radians(270.f), glm::vec3(1.0f, 0.f, 0.0f)) * glm::rotate(glm::radians(90.f), glm::vec3(0.f, 0.f, 1.0f)));
+	}
 	//STATEK
 	glm::vec3 spaceshipSide = glm::normalize(glm::cross(spaceshipDir, glm::vec3(0.f, 1.f, 0.f)));
 	glm::vec3 spaceshipUp = glm::normalize(glm::cross(spaceshipSide, spaceshipDir));
@@ -379,15 +459,9 @@ void renderScene(GLFWwindow* window)
 			// Rysuj laser
 			glm::mat4 laserModelMatrix = glm::translate(laser.position) * glm::scale(glm::vec3(0.0003));
 			drawObjectTexture(programDefault, contexts.laserContext, textures.laser, laserModelMatrix);
-			if(checkCollision(laser.position,0.5f))
-			{
-				laser.isActive = false;
-			}
+			if(checkCollision(laser.position,0.5f)) laser.isActive = false;
 		}
-		else
-		{
-			laser.isActive = false;
-		}
+		else laser.isActive = false;
 	}
 
 	if (!hideInstruction)
@@ -485,6 +559,8 @@ void initTextures() {
 	textures.asteroid = loadTextureSet("./textures/asteroid/asteroid_albedo.png", "./textures/asteroid/asteroid_normal.png", "./textures/planets/mars/mars_ao.jpg", "./textures/asteroid/asteroid_roughness.png", "./textures/asteroid/asteroid_metallic.png");
 	textures.barier = loadTextureSet("./textures/barier/barier_albedo.jpeg", "./textures/barier/barier_normal.png", "./textures/planets/barier/barier_ao.png", "./textures/barier/barier_roughness.jpeg", "./textures/barier/barier_metallic.png");
 	textures.laser = loadTextureSet("./textures/spaceship/laser_albedo.jpg","./textures/spaceship/laser_normal.png","./textures/spaceship/laser_ao.jpg","./textures/spaceship/laser_roughness.jpg","./textures/spaceship/laser_metallic.jpg");
+	textures.circle_bright = loadTextureSet("./textures/circle/circle_albedo_bright.jpg", "./textures/circle/circle_normal.png", "./textures/circle/circle_ao.jpg", "./textures/circle/circle_roughness.jpg", "./textures/circle/circle_metallic.jpg");
+	textures.circle_dark = loadTextureSet("./textures/circle/circle_albedo_dark.jpg", "./textures/circle/circle_normal.png", "./textures/circle/circle_ao.jpg", "./textures/circle/circle_roughness.jpg", "./textures/circle/circle_metallic.jpg");
 
 	sprites.sprite_1 = Core::LoadTexture("./img/mission_board_1.png");
 	sprites.sprite_2 = Core::LoadTexture("./img/mission_board_2.png");
@@ -583,6 +659,7 @@ void init(GLFWwindow* window)
 	loadModelToContext("./models/laser.glb", contexts.laserContext);
 	loadModelToContext("./models/cube.obj", contexts.skyboxContext);
 	loadModelToContext("./models/barier.fbx", contexts.barierContext);
+	loadModelToContext("./models/circle.dae", contexts.circleContext);
 
 	initTextures();
 
@@ -617,39 +694,22 @@ void processInput(GLFWwindow* window)
 
 	// SprawdŸ kolizjê po dodaniu wartoœci
 
-	if (glfwGetKey(window, GLFW_KEY_ESCAPE) == GLFW_PRESS) {
-		glfwSetWindowShouldClose(window, true);
-	}
-	if (glfwGetKey(window, GLFW_KEY_X) == GLFW_PRESS)
-		hideInstruction = true;
-
+	if (glfwGetKey(window, GLFW_KEY_ESCAPE) == GLFW_PRESS) glfwSetWindowShouldClose(window, true);
+	if (glfwGetKey(window, GLFW_KEY_X) == GLFW_PRESS) hideInstruction = true;
 	if (hideInstruction == true) {
-		if (glfwGetKey(window, GLFW_KEY_W) == GLFW_PRESS)
-			newSpaceshipPos += spaceshipDir * moveSpeed;
-		if (glfwGetKey(window, GLFW_KEY_S) == GLFW_PRESS)
-			newSpaceshipPos -= spaceshipDir * moveSpeed;
-		if (glfwGetKey(window, GLFW_KEY_TAB) == GLFW_PRESS)
-		{
-			showMissions = true;
-		}
-		else
-		{
-			showMissions = false;
-		}
+		if (glfwGetKey(window, GLFW_KEY_W) == GLFW_PRESS) newSpaceshipPos += spaceshipDir * moveSpeed;
+		if (glfwGetKey(window, GLFW_KEY_S) == GLFW_PRESS) newSpaceshipPos -= spaceshipDir * moveSpeed;
+		if (glfwGetKey(window, GLFW_KEY_TAB) == GLFW_PRESS) showMissions = true; else showMissions = false;
 		if (glfwGetKey(window, GLFW_KEY_SPACE) == GLFW_PRESS && !laser.isActive)
 		{
 			laser.isActive = true;
 			laser.position = spaceshipPos;
 			laser.direction = spaceshipDir;
 			laser.startTime = glfwGetTime();
-
 		}
 	}
-
 	// Jeœli nie wykryto kolizji, zaktualizuj pozycjê statku
-	if (checkCollision(newSpaceshipPos, spaceshipRadius) == false) {
-		spaceshipPos = newSpaceshipPos;
-	}
+	if (checkCollision(newSpaceshipPos, spaceshipRadius) == false) spaceshipPos = newSpaceshipPos;
 
 	cameraPos = spaceshipPos - 1.5 * spaceshipDir + glm::vec3(0, 1, 0) * 0.5f;
 	cameraDir = spaceshipDir;
