@@ -93,7 +93,6 @@ bool showMissions = false;
 bool hideInstruction = false;
 bool raceCompleted = false;
 bool trashCompleted = false;
-bool hideCompleted = true;
 int circleVisited = 0;
 
 std::chrono::time_point<std::chrono::steady_clock> start_time;
@@ -461,9 +460,8 @@ void renderScene(GLFWwindow* window)
 	if (trashCompleted && raceCompleted)
 	{
 		renderSprite->UpdateSprite(sprites.sprite_4);
-		hideCompleted = false;
+		renderSpriteEnd->DrawSprite(programSprite, 740.0f, 580.0f);
 	}
-	if (!hideCompleted) renderSpriteEnd->DrawSprite(programSprite, 740.0f, 580.0f);
 
 	glBindFramebuffer(GL_FRAMEBUFFER, 0);
 
@@ -665,10 +663,7 @@ void processInput(GLFWwindow* window)
 	glm::vec3 newSpaceshipPos = spaceshipPos;
 
 	if (glfwGetKey(window, GLFW_KEY_ESCAPE) == GLFW_PRESS) glfwSetWindowShouldClose(window, true);
-	if (glfwGetKey(window, GLFW_KEY_X) == GLFW_PRESS) {
-		hideInstruction = true;
-		hideCompleted = true;
-	}
+	if (glfwGetKey(window, GLFW_KEY_X) == GLFW_PRESS) hideInstruction = true;
 	if (hideInstruction == true) {
 		if (glfwGetKey(window, GLFW_KEY_W) == GLFW_PRESS) newSpaceshipPos += spaceshipDir * moveSpeed;
 		if (glfwGetKey(window, GLFW_KEY_S) == GLFW_PRESS) newSpaceshipPos -= spaceshipDir * moveSpeed;
