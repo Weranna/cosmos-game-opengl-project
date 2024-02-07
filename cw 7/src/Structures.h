@@ -15,6 +15,7 @@ struct Contexts {
     Core::RenderContext laserContext;
     Core::RenderContext skyboxContext;
     Core::RenderContext barierContext;
+    Core::RenderContext circleContext;
 };
 
 struct TextureSet {
@@ -45,6 +46,7 @@ struct Textures {
     TextureSet asteroid;
     TextureSet laser;
     TextureSet barier;
+    TextureSet circle;
 };
 
 struct ObjectInfo {

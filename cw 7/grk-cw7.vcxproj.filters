@@ -125,5 +125,7 @@
     </None>
     <None Include="models\asteroid_barier.fbx" />
     <None Include="models\barier.fbx" />
+    <None Include="shaders\shader_circle.vert" />
+    <None Include="shaders\shader_circle.frag" />
   </ItemGroup>
 </Project>
