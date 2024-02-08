@@ -282,7 +282,7 @@ bool checkCollision(glm::vec3 object1Pos, float object1Radius) {
 		glm::vec3& position = pair.second.first;
 		bool& visited = pair.second.second;
 		float distance = glm::length(object1Pos - position);
-		if (!visited && distance < (object1Radius + 5.f)) {
+		if (!visited && distance < (object1Radius + 10.f)) {
 			visited = true;
 			circleVisited++;
 			if (circleVisited == 1) start_time = std::chrono::steady_clock::now();
@@ -497,7 +497,7 @@ void renderScene(GLFWwindow* window)
 
 void framebuffer_size_callback(GLFWwindow* window, int width, int height)
 {
-	aspectRatio = width / float(height);
+	aspectRatio = 1920 /float(1080);
 	glViewport(0, 0, width, height);
 	std::cout << width << height;
 }
