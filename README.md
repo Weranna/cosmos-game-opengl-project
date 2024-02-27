@@ -1,1 +1,1 @@
-# **Open: Opis_projekt.pdf**
+**Open: Opis_projektu.pdf**
